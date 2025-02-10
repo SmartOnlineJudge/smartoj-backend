@@ -1,0 +1,14 @@
+# Python 虚拟环境
+venv/
+
+# Python 二进制文件
+*.pyc
+
+# Python 缓存
+__pycache__/
+
+# VSCode 编辑器配置
+.vscode/
+
+# JetBrains 编辑器配置
+.idea/
