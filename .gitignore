@@ -12,3 +12,7 @@ __pycache__/
 
 # JetBrains 编辑器配置
 .idea/
+
+test*.py
+
+logs/
