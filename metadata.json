@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "databases": {
+      "mysql": {
+        "default": {
+          "USER": "your_user",
+          "PASSWORD": "your_password",
+          "PORT": 3306,
+          "HOST": "127.0.0.1",
+          "NAME": "your_db_name"
+        }
+      },
+      "redis": {
+        "default": {
+          "HOST": "127.0.0.1",
+          "PORT": 6379,
+          "DB": 0
+        },
+        "session": {
+          "HOST": "127.0.0.1",
+          "PORT": 6379,
+          "DB": 1
+        }
+      }
+    },
+    "secrets": {
+      "PASSWORD": "your_secret"
+    }
+  }
+}
