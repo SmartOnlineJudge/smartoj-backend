@@ -1,3 +1,4 @@
+from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import aiomysql
@@ -25,7 +26,7 @@ class MySQLExecutor:
             )
 
     @asynccontextmanager
-    async def connection(self) -> aiomysql.Connection:
+    async def connection(self) -> AsyncGenerator[aiomysql.Connection]:
         await self.initialize_connection_pool()
         async with self._pool.acquire() as conn:
             yield conn

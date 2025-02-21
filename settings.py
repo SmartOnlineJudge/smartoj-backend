@@ -20,3 +20,6 @@ SECRETS: dict = METADATA["secrets"]
 
 # 登录状态最大保存时间
 SESSION_MAX_AGE: int = 60 * 60 * 24
+
+# MinIO 对象存储配置
+MINIO_CONF: dict = METADATA["minio"]

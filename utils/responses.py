@@ -4,7 +4,12 @@ from fastapi.responses import JSONResponse
 
 
 class ResponseCodes:
+    # 通用响应码
     OK = (200, "OK")
+    FILE_TOO_LARGE = (210, "文件过大，上传失败")
+    FILE_TYPE_NOT_ALLOWED = (220, "文件类型不允许")
+    FILE_UPLOAD_ERROR = (230, "文件上传异常")
+    # 后台管理响应码
     LOGIN_SUCCESS = (300, "登录成功")
     LOGIN_FAILED = (305, "登录失败")
     PERMISSION_DENIED = (310, "当前账号权限不足")

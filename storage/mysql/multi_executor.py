@@ -97,6 +97,39 @@ class UserDynamicExecutor(MySQLExecutor):
                     return -1
                 return cursor.lastrowid
 
+    async def update_user_avatar(self, user_id: str, avatar: str):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                sql = """
+                    UPDATE user_dynamic
+                    SET avatar = %s
+                    WHERE user_id = (SELECT id FROM user WHERE user_id = %s)
+                """
+                try:
+                    await cursor.execute(sql, (avatar, user_id))
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                    await connection.rollback()
+
+    async def update_user_dynamic(
+        self,
+        user_id: str,
+        name: str = "",
+        profile: str = "",
+    ):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                sql = """
+                    UPDATE user_dynamic
+                    SET name = %s, profile = %s
+                    WHERE user_id = (SELECT id FROM user WHERE user_id = %s)
+                """
+                try:
+                    await cursor.execute(sql, (name, profile, user_id))
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                   await connection.rollback()
+
 
 class QuestionExecutor(MySQLExecutor):
     pass
