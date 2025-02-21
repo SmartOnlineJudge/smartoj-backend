@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.requests import Request
 
 import settings
-from ..user.models import LoginModel, UserOutModel
+from ..user.models import LoginModel
 from ..user.route import user_logout
 from utils.user.auth import authenticate, login, get_current_admin
 from utils.responses import SmartOJResponse, ResponseCodes
@@ -22,7 +22,7 @@ async def admin_login(form: LoginModel):
         return SmartOJResponse(ResponseCodes.LOGIN_FAILED)
     if not user["is_superuser"]:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
-    session_id = await login(user["user_id"])
+    session_id = await login(user)
     response = SmartOJResponse(ResponseCodes.LOGIN_SUCCESS)
     response.set_cookie(
         key="session_id",
@@ -40,5 +40,4 @@ async def admin_logout(request: Request):
 
 @router.get("/admin", summary="获取当前管理员信息")
 async def get_admin_user(admin: dict = Depends(get_current_admin)):
-    admin_model = UserOutModel(**admin)
-    return SmartOJResponse(ResponseCodes.OK, data=admin_model.model_dump())
+    return SmartOJResponse(ResponseCodes.OK, data=admin)

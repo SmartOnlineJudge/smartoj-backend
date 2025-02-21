@@ -1,12 +1,15 @@
+import json
 import secrets
 
 from redis.asyncio import Redis
 from fastapi import Depends, HTTPException
 from fastapi.requests import Request
+from pydantic import EmailStr
 
 import settings
 from storage.mysql import executors
 from storage.cache import get_session_redis
+from routes.user.models import UserOutModel
 from .security import password_hash
 
 
@@ -42,7 +45,7 @@ auth_functions = {
 
 
 async def authenticate(
-    email: str = "",
+    email: str | EmailStr = "",
     password: str = "",
     github_token: str = "",
     qq_token: str = "",
@@ -56,12 +59,14 @@ async def authenticate(
     )
 
 
-async def login(user_id: str) -> str:
+async def login(user: dict) -> str:
     session_redis = get_session_redis()
+    user_model = UserOutModel(**user)
+    user_str = json.dumps(user_model.model_dump())
     while True:
         session_id = secrets.token_hex(16)
         if not await session_redis.exists(session_id):
-            await session_redis.set(session_id, user_id, ex=settings.SESSION_MAX_AGE)
+            await session_redis.set(session_id, user_str, ex=settings.SESSION_MAX_AGE)
             return session_id
 
 
@@ -80,13 +85,10 @@ async def get_current_user(
     session_id = request.cookies.get("session_id")
     if not session_id:
         raise HTTPException(status_code=401, detail="未登录")
-    user_id = await session_redis.get(session_id)
-    if not user_id:
+    user_str = await session_redis.get(session_id)
+    if not user_str:
         raise HTTPException(status_code=401, detail="未登录")
-    user = await executors.user.get_user_by_user_id(user_id)
-    if not user:
-        raise HTTPException(status_code=401, detail="查询用户时出错")
-    return user
+    return json.loads(user_str)
 
 
 async def get_current_admin(user: dict = Depends(get_current_user)) -> dict | None:
