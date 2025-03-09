@@ -7,7 +7,7 @@ from fastapi.requests import Request
 import settings
 from ..user.models import LoginModel
 from ..user.route import user_logout
-from utils.user.auth import authenticate, login, get_current_admin
+from utils.user.auth import authenticate, login, get_current_admin, USER_PREFIX
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.cache import get_session_redis, Redis
 from storage.mysql import executors
@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.post("/user/login", summary="管理员登录")
-async def admin_login(form: LoginModel):
+async def admin_login(request: Request, form: LoginModel):
     """
     ## 参数列表说明:
     **email**: 管理员邮箱号；必须；请求体 </br>
@@ -39,7 +39,7 @@ async def admin_login(form: LoginModel):
         return SmartOJResponse(ResponseCodes.LOGIN_FAILED)
     if not user["is_superuser"]:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
-    session_id = await login(user)
+    session_id = await login(request, user)
     response = SmartOJResponse(ResponseCodes.LOGIN_SUCCESS)
     response.set_cookie(
         key="session_id",
@@ -62,7 +62,6 @@ async def get_admin_user(admin: dict = Depends(get_current_admin)):
 
 @router.put("/user", summary="修改管理员信息")
 async def update_admin_user(
-    request: Request,
     name: str = Body(max_length=20),
     profile: str = Body(max_length=255),
     admin: dict = Depends(get_current_admin),
@@ -86,13 +85,13 @@ async def update_admin_user(
 
     async def update_cache():
         """更新缓存"""
-        session_id = request.cookies.get("session_id")
-        user_str = await session_redis.get(session_id)
+        user_str_id = USER_PREFIX + admin["user_id"]
+        user_str = await session_redis.get(user_str_id)
         user_dict = json.loads(user_str)
         user_dict["name"] = name
         user_dict["profile"] = profile
-        ex = await session_redis.ttl(session_id)
-        await session_redis.set(session_id, json.dumps(user_dict), ex)
+        ex = await session_redis.ttl(user_str_id)
+        await session_redis.set(user_str_id, json.dumps(user_dict), ex)
 
     tasks = [update_db(), update_cache()]
     await asyncio.gather(*tasks)

@@ -9,7 +9,7 @@ from minio.error import MinioException
 from fastapi import APIRouter, UploadFile, Depends
 from fastapi.requests import Request
 
-from utils.user.auth import logout, get_current_user
+from utils.user.auth import logout, get_current_user, USER_PREFIX
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.oss import get_minio_client, MAX_AVATAR_SIZE, AVATAR_BUCKET_NAME
 from storage.mysql import executors
@@ -29,7 +29,6 @@ async def user_logout(request: Request):
 
 @router.post("/avatar", summary="用户上传头像")
 async def upload_user_avatar(
-    request: Request,
     avatar: UploadFile,
     user: dict = Depends(get_current_user),
     minio_client: Minio = Depends(get_minio_client),
@@ -84,13 +83,13 @@ async def upload_user_avatar(
 
     async def update_cache():
         """更新缓存"""
-        session_id = request.cookies.get("session_id")
-        user_str = await session_redis.get(session_id)
+        user_str_id = USER_PREFIX + user["user_id"]
+        user_str = await session_redis.get(user_str_id)
         user_dict = json.loads(user_str)
         user_dict["avatar"] = hole_avatar
-        ex = await session_redis.ttl(session_id)
+        ex = await session_redis.ttl(user_str_id)
         await session_redis.set(
-            session_id, json.dumps(user_dict), ex
+            user_str_id, json.dumps(user_dict), ex
         )  # 注意使用原来的过期时间
 
     tasks = [update_db(), update_cache()]
