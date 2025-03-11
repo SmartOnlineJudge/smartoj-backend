@@ -2,21 +2,32 @@ import re
 import io
 import json
 import asyncio
+import random
+import time
 
 import filetype
 from minio import Minio
 from minio.error import MinioException
-from fastapi import APIRouter, UploadFile, Depends
+from pydantic import EmailStr
+from fastapi import APIRouter, UploadFile, Depends, Body
 from fastapi.requests import Request
 
+from .models import VerificationCodeType
 from utils.user.auth import logout, get_current_user, USER_PREFIX
+from utils.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.oss import get_minio_client, MAX_AVATAR_SIZE, AVATAR_BUCKET_NAME
 from storage.mysql import executors
-from storage.cache import get_session_redis, Redis
+from storage.cache import get_session_redis, Redis, CachePrefix
+from mq.broker import send_email_task
 
 
 router = APIRouter()
+
+
+@router.get("/", summary="获取当前用户信息")
+def get_user(user: dict = Depends(get_current_user)):
+    return SmartOJResponse(ResponseCodes.OK, data=mask(user))
 
 
 @router.post("/logout", summary="用户退出登录")
@@ -94,5 +105,56 @@ async def upload_user_avatar(
 
     tasks = [update_db(), update_cache()]
     await asyncio.gather(*tasks)
+
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.post("/verification-code", summary="发送验证码")
+async def send_verification_code(
+    request: Request,
+    verification_code_type: VerificationCodeType = Body(embed=True),
+    recipient: EmailStr = Body("test@smartoj.com", embed=True),
+    session_redis: Redis = Depends(get_session_redis),
+):
+    """
+    ## 参数列表说明:
+    **verification_code_type**: 要发送的验证码类型 `register`、`login`、`change_password`、`change_email`；必须；请求体 </br>
+    **recipient**: 目标邮箱；当验证码类型是 `login` 和 `register` 时必须；请求体
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **235**: 邮箱不能为空 </br>
+    **240**: 请求过于频繁
+    """
+    verification_code = "".join(random.choices("0123456789", k=6))
+    content = f"您的验证码是：{verification_code}，该验证码 5 分钟内有效，请勿泄露给他人，若非本人操作请忽略本邮件。"
+
+    if verification_code_type.value in ("login", "register"):
+        real_recipient = str(recipient)
+    else:
+        user: dict = await get_current_user(request, session_redis)
+        real_recipient = user["email"]
+
+    if not real_recipient:
+        return SmartOJResponse(ResponseCodes.EMAIL_NOT_ALLOW_NULL)
+
+    cache_name = (
+        CachePrefix.VERIFICATION_CODE_PREFIX
+        + real_recipient
+        + "-"
+        + verification_code_type.value
+    )
+    cache_content = await session_redis.get(cache_name)
+    if cache_content and (int(time.time()) - json.loads(cache_content)["created"] < 60):
+        return SmartOJResponse(ResponseCodes.REQUEST_FREQUENTLY)
+
+    cache_content = json.dumps(
+        {
+            "code": verification_code,
+            "created": int(time.time()),
+        }
+    )
+    await session_redis.set(cache_name, cache_content, ex=60 * 5)
+
+    await send_email_task.kiq(real_recipient, "你的一次性代码", content)
 
     return SmartOJResponse(ResponseCodes.OK)

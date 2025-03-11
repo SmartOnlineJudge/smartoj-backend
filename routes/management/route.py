@@ -8,6 +8,7 @@ import settings
 from ..user.models import LoginModel
 from ..user.route import user_logout
 from utils.user.auth import authenticate, login, get_current_admin, USER_PREFIX
+from utils.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.cache import get_session_redis, Redis
 from storage.mysql import executors
@@ -57,7 +58,7 @@ async def admin_logout(request: Request):
 
 @router.get("/user", summary="获取当前管理员信息")
 async def get_admin_user(admin: dict = Depends(get_current_admin)):
-    return SmartOJResponse(ResponseCodes.OK, data=admin)
+    return SmartOJResponse(ResponseCodes.OK, data=mask(admin))
 
 
 @router.put("/user", summary="修改管理员信息")

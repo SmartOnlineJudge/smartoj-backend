@@ -20,3 +20,12 @@ def password_hash(password: str, salt: str) -> str:
     hashed = hashlib.pbkdf2_hmac("sha256", password, salt, 100000)
     store_password = salt + hashed
     return base64.b64encode(store_password).decode()
+
+
+def mask(user: dict):
+    """隐藏用户部分敏感信息"""
+    v = user["email"]
+    local_part, domain = v.split("@", maxsplit=1)
+    masked = "*" * 6
+    user["email"] = local_part[:3] + masked + "@" + domain
+    return user

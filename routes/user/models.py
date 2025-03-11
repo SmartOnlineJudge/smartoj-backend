@@ -2,7 +2,7 @@ from enum import Enum
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr
 
 from utils.models import DatetimeModel
 
@@ -12,6 +12,13 @@ class AuthType(Enum):
     QQ = "qq"
     EMAIL = "email"
     PASSWORD = "password"
+
+
+class VerificationCodeType(Enum):
+    register = "register"
+    login = "login"
+    change_password = "change_password"
+    change_email = "change_email"
 
 
 class LoginModel(BaseModel):
@@ -35,16 +42,3 @@ class UserOutModel(DatetimeModel):
     is_deleted: bool
     grade: int
     experience: int
-
-    @field_validator("email", mode="before")  # noqa
-    @classmethod
-    def mask_email(cls, v: str) -> str:
-        """
-        邮箱脱敏：
-        1111111@qq.com -> 111******@qq.com
-        1@qq.com -> 1******@qq.com
-        """
-
-        local_part, domain = v.split("@", maxsplit=1)
-        mask = "*" * 6
-        return local_part[:3] + mask + "@" + domain

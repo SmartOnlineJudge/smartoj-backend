@@ -9,6 +9,8 @@ class ResponseCodes:
     FILE_TOO_LARGE = (210, "文件过大，上传失败")
     FILE_TYPE_NOT_ALLOWED = (220, "文件类型不允许")
     FILE_UPLOAD_ERROR = (230, "文件上传异常")
+    EMAIL_NOT_ALLOW_NULL = (235, "邮箱不能为空")
+    REQUEST_FREQUENTLY = (240, "请求过于频繁，请稍后再试")
     # 后台管理响应码
     LOGIN_SUCCESS = (300, "登录成功")
     LOGIN_FAILED = (305, "登录失败")

@@ -3,6 +3,12 @@ from redis.asyncio import Redis, ConnectionPool
 import settings
 
 
+class CachePrefix:
+    SESSION_PREFIX = "smartoj-session:"
+    USER_PREFIX = "smartoj-user:"
+    VERIFICATION_CODE_PREFIX = "smartoj-verification-code:"
+
+
 _default_connection_pool = ConnectionPool(
     max_connections=10,
     host=settings.REDIS_CONF["default"]["HOST"],

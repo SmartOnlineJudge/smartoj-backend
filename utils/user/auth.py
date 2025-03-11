@@ -10,13 +10,13 @@ from pydantic import EmailStr
 
 import settings
 from storage.mysql import executors
-from storage.cache import get_session_redis
+from storage.cache import get_session_redis, CachePrefix
 from routes.user.models import UserOutModel
 from .security import password_hash
 
 
-SESSION_PREFIX = "smartoj-session:"
-USER_PREFIX = "smartoj-user:"
+SESSION_PREFIX = CachePrefix.SESSION_PREFIX
+USER_PREFIX = CachePrefix.USER_PREFIX
 
 
 async def _password_auth(email: str, password: str, **_) -> dict:

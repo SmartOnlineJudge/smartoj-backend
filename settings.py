@@ -7,7 +7,7 @@ DEV_ENV: bool = True
 METADATA_FILENAME: str = "metadata_dev.json" if DEV_ENV else "metadata.json"
 
 # 元数据
-METADATA: dict = json.load(open(METADATA_FILENAME))["metadata"]
+METADATA: dict = json.load(open(METADATA_FILENAME, encoding="utf8"))["metadata"]
 
 # MySQL 连接配置
 MYSQL_CONF: dict = METADATA["databases"]["mysql"]["default"]
@@ -23,3 +23,9 @@ SESSION_MAX_AGE: int = 60 * 60 * 24
 
 # MinIO 对象存储配置
 MINIO_CONF: dict = METADATA["minio"]
+
+# RabbitMQ 消息队列配置
+RABBITMQ_CONF: dict = METADATA["rabbitmq"]
+
+# SMTP 邮箱配置
+SMTP_CONF: dict = METADATA["smtp"]
