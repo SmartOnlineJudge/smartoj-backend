@@ -1,3 +1,5 @@
+from typing import List, Tuple, Any
+
 import aiomysql
 
 import settings
@@ -7,12 +9,12 @@ from .base import MySQLExecutor
 
 class UserExecutor(MySQLExecutor):
     async def create_user(
-        self,
-        password: str = None,
-        email: str = "",
-        github_token: str = "",
-        qq_token: str = "",
-        is_superuser: bool = False,
+            self,
+            password: str = None,
+            email: str = "",
+            github_token: str = "",
+            qq_token: str = "",
+            is_superuser: bool = False,
     ) -> int:
         if password is not None:
             db_password = password_hash(password, settings.SECRETS["PASSWORD"])
@@ -73,14 +75,37 @@ class UserExecutor(MySQLExecutor):
         """根据 github_token 获取用户"""
         return await self._get_user('github_token', github_token)
 
+    async def get_page_user_data(self, page: int, size: int) -> tuple[list, int]:
+        """分页展示用户信息"""
+        cursor = await self.cursor()
+        sql1 = f"""
+            select u.id, u.user_id, u.email, u.github_token, u.qq_token, 
+                u.created_at, u.is_deleted, u.is_superuser, ud.name, ud.avatar, 
+                ud.profile, ud.grade, ud.experience
+            from user u
+            inner join user_dynamic ud on u.id = ud.user_id
+            limit %s, %s
+        """
+        sql2 = f"""
+            select count(*) from smartoj.user
+        """
+        try:
+            await cursor.execute(sql1, (size * (page - 1), size))
+            user = await cursor.fetchall()
+            await cursor.execute(sql2)
+            total = await cursor.fetchall()
+        except aiomysql.MySQLError:
+            return [], 0
+        return user, total
+
 
 class UserDynamicExecutor(MySQLExecutor):
     async def create_user_dynamic(
-        self,
-        user_id: int,
-        name: str,
-        profile: str = "",
-        avatar: str = "",
+            self,
+            user_id: int,
+            name: str,
+            profile: str = "",
+            avatar: str = "",
     ) -> int:
         avatar = avatar or "/user-avatars/default.webp"
         async with self.connection() as connection:
@@ -112,10 +137,10 @@ class UserDynamicExecutor(MySQLExecutor):
                     await connection.rollback()
 
     async def update_user_dynamic(
-        self,
-        user_id: str,
-        name: str = "",
-        profile: str = "",
+            self,
+            user_id: str,
+            name: str = "",
+            profile: str = "",
     ):
         async with self.connection() as connection:
             async with connection.cursor() as cursor:
@@ -128,7 +153,7 @@ class UserDynamicExecutor(MySQLExecutor):
                     await cursor.execute(sql, (name, profile, user_id))
                     await connection.commit()
                 except aiomysql.MySQLError:
-                   await connection.rollback()
+                    await connection.rollback()
 
 
 class QuestionExecutor(MySQLExecutor):

@@ -1,18 +1,17 @@
 import json
 import asyncio
 
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, Query
 from fastapi.requests import Request
 
 import settings
-from ..user.models import LoginModel
+from ..user.models import LoginModel, UserListModel
 from ..user.route import user_logout
 from utils.user.auth import authenticate, login, get_current_admin, USER_PREFIX
 from utils.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.cache import get_session_redis, Redis
 from storage.mysql import executors
-
 
 router = APIRouter()
 
@@ -63,10 +62,10 @@ async def get_admin_user(admin: dict = Depends(get_current_admin)):
 
 @router.put("/user", summary="修改管理员信息")
 async def update_admin_user(
-    name: str = Body(max_length=20),
-    profile: str = Body(max_length=255),
-    admin: dict = Depends(get_current_admin),
-    session_redis: Redis = Depends(get_session_redis),
+        name: str = Body(max_length=20),
+        profile: str = Body(max_length=255),
+        admin: dict = Depends(get_current_admin),
+        session_redis: Redis = Depends(get_session_redis),
 ):
     """
     ## 参数列表说明:
@@ -96,5 +95,22 @@ async def update_admin_user(
 
     tasks = [update_db(), update_cache()]
     await asyncio.gather(*tasks)
-
     return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.get("/users", summary="分页获取用户信息")
+async def get_user_data(
+        _: dict = Depends(get_current_admin),
+        page: int = Query(1, ge=1),
+        size: int = Query(1, ge=1)
+):
+    page_data, total = await executors.user.get_page_user_data(page, size)
+    results = []
+    total = total[0]["count(*)"]
+    for data in page_data:
+        model = UserListModel(**data)
+        results.append(model.model_dump())
+    return SmartOJResponse(ResponseCodes.OK, data={
+        "total": total,
+        "results": results,
+    })

@@ -42,3 +42,7 @@ class UserOutModel(DatetimeModel):
     is_deleted: bool
     grade: int
     experience: int
+
+
+class UserListModel(UserOutModel):
+    id: int
