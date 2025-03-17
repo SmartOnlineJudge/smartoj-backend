@@ -4,9 +4,9 @@ import settings
 
 
 class CachePrefix:
-    SESSION_PREFIX = "smartoj-session:"
-    USER_PREFIX = "smartoj-user:"
-    VERIFICATION_CODE_PREFIX = "smartoj-verification-code:"
+    SESSION_PREFIX = "smartoj-session:"  # 保存单个 Session 信息
+    USER_PREFIX = "smartoj-user:"  # 保存用户信息
+    VERIFICATION_CODE_PREFIX = "smartoj-verification-code:"  # 保存用户验证码信息
 
 
 _default_connection_pool = ConnectionPool(

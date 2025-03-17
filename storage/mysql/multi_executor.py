@@ -1,4 +1,4 @@
-from typing import List, Tuple, Any
+import time
 
 import aiomysql
 
@@ -91,12 +91,12 @@ class UserExecutor(MySQLExecutor):
         """
         try:
             await cursor.execute(sql1, (size * (page - 1), size))
-            user = await cursor.fetchall()
+            users = await cursor.fetchall()
             await cursor.execute(sql2)
-            total = await cursor.fetchall()
+            total = await cursor.fetchone()
         except aiomysql.MySQLError:
             return [], 0
-        return user, total
+        return users, total["count(*)"]
 
 
 class UserDynamicExecutor(MySQLExecutor):
@@ -108,6 +108,7 @@ class UserDynamicExecutor(MySQLExecutor):
             avatar: str = "",
     ) -> int:
         avatar = avatar or "/user-avatars/default.webp"
+        name = name or str(int(time.time()))
         async with self.connection() as connection:
             async with connection.cursor() as cursor:
                 sql = """

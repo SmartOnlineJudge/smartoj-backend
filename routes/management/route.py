@@ -102,15 +102,11 @@ async def update_admin_user(
 async def get_user_data(
         _: dict = Depends(get_current_admin),
         page: int = Query(1, ge=1),
-        size: int = Query(1, ge=1)
+        size: int = Query(5, ge=1)
 ):
-    page_data, total = await executors.user.get_page_user_data(page, size)
+    users, total = await executors.user.get_page_user_data(page, size)
     results = []
-    total = total[0]["count(*)"]
-    for data in page_data:
-        model = UserListModel(**data)
-        results.append(model.model_dump())
-    return SmartOJResponse(ResponseCodes.OK, data={
-        "total": total,
-        "results": results,
-    })
+    for user in users:
+        model = UserListModel(**user)
+        results.append(mask(model.model_dump()))
+    return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
