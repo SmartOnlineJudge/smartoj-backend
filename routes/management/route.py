@@ -7,7 +7,7 @@ from fastapi.requests import Request
 import settings
 from ..user.models import LoginModel, UserListModel
 from ..user.route import user_logout
-from utils.user.auth import authenticate, login, get_current_admin, USER_PREFIX
+from utils.user.auth import authenticate, login, get_current_admin, USER_PREFIX, SESSION_PREFIX
 from utils.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.cache import get_session_redis, Redis
@@ -104,9 +104,76 @@ async def get_user_data(
         page: int = Query(1, ge=1),
         size: int = Query(5, ge=1)
 ):
+    """
+    ## 参数列表说明:
+    **page**: 查询的页码；必须；默认为1；查询参数 </br>
+    **size**: 每页的数据数；必须；请求体；默认为5；查询参数 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
     users, total = await executors.user.get_page_user_data(page, size)
     results = []
     for user in users:
         model = UserListModel(**user)
         results.append(mask(model.model_dump()))
+    return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
+
+
+@router.get("/users/status", summary="分页获取用户登录状态信息")
+async def get_user_status(
+
+        _: dict = Depends(get_current_admin),
+        page: int = Query(1, ge=1),
+        size: int = Query(5, ge=1),
+        session_redis: Redis = Depends(get_session_redis)
+):
+    """
+    ## 参数列表说明:
+    **page**: 查询的页码；必须；默认为1；查询参数 </br>
+    **size**: 每页的数据数；必须；请求体；默认为5；查询参数 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    results = []
+
+    session_keys = await session_redis.keys(SESSION_PREFIX + "*")
+
+    # 解析每个 session 的数据，提取 first_login 时间
+    sessions = []
+    for key in session_keys:
+        session_str = await session_redis.get(key)
+        session_dict = json.loads(session_str)
+        sessions.append({
+            "key": key,
+            "first_login": session_dict.get("first_login", ""),  # 提取 first_login 时间
+            "session_dict": session_dict  # 保存完整的 session_dict
+        })
+
+    # 按照 first_login 时间降序排序
+    # 如果 first_login 为空字符串，则将其排在最后
+    sessions.sort(key=lambda x: x["first_login"] or "0", reverse=True)
+
+    # 分页逻辑
+    total = len(sessions)
+    start = (page - 1) * size
+    end = page * size if page * size < total else total
+    paginated_sessions = sessions[start:end]
+
+    # 构造返回结果
+    for session in paginated_sessions:
+        session_dict = session["session_dict"]
+        user_str = await session_redis.get(USER_PREFIX + session_dict["user_id"])
+        user_dict = json.loads(user_str)
+        result_dict = {
+            "session_id": session["key"].split(":")[-1],
+            "user_id": session_dict["user_id"],
+            "name": user_dict.get("name", ""),
+            "host": session_dict.get("host", ""),
+            "platform": session_dict.get("platform", ""),
+            "browser": session_dict.get("browser", ""),
+            "first_login": session_dict.get("first_login", ""),
+            "last_active": session_dict.get("last_active", "")
+        }
+        results.append(result_dict)
+
     return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
