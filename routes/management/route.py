@@ -215,10 +215,6 @@ async def update_user_deleted(
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     tasks = [update_db(), update_cache()]
     await asyncio.gather(*tasks)
-    await executors.user.update_user_is_delete(
-        user_id=user_id,
-        is_deleted=is_deleted
-    )
     return SmartOJResponse(ResponseCodes.OK)
 
 

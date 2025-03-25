@@ -110,11 +110,11 @@ class UserExecutor(MySQLExecutor):
                     SET is_deleted = %s
                     WHERE user_id = %s
                 """
-                # try:
-                await cursor.execute(sql, (is_deleted, user_id))
-                await connection.commit()
-            # except aiomysql.MySQLError as e:
-            #     print(e)
+                try:
+                    await cursor.execute(sql, (is_deleted, user_id))
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                    await connection.rollback()
 
 
 class UserDynamicExecutor(MySQLExecutor):
