@@ -119,7 +119,7 @@ async def get_user_data(
     return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
 
 
-@router.get("/users/status", summary="分页获取用户登录状态信息")
+@router.get("/user/status", summary="分页获取用户登录状态信息")
 async def get_user_status(
 
         _: dict = Depends(get_current_admin),
@@ -177,3 +177,64 @@ async def get_user_status(
         results.append(result_dict)
 
     return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
+
+
+@router.patch("/user", summary="禁用用户")
+async def update_user_deleted(
+        admin: dict = Depends(get_current_admin),
+        user_id: str = Body(max_length=13),
+        is_deleted: bool = Body(),
+        session_redis: Redis = Depends(get_session_redis),
+):
+    """
+    ## 参数列表说明:
+    **user_id**: 要修改信息的用户id（最大长度不超过20）；必须；请求体 </br>
+    **is_deleted**: 该用户是否禁用（bool值）；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    **310**: 当前帐号权限不足，管理员不能禁用自己的账号
+    """
+
+    async def update_db():
+        """更新数据库"""
+        await executors.user.update_user_is_delete(
+            user_id=user_id,
+            is_deleted=is_deleted
+        )
+
+    async def update_cache():
+        """更新缓存"""
+        user_str_id = USER_PREFIX + user_id
+        user_str = await session_redis.get(user_str_id)
+        user_dict = json.loads(user_str)
+        user_dict["is_deleted"] = is_deleted
+        ex = await session_redis.ttl(user_str_id)
+        await session_redis.set(user_str_id, json.dumps(user_dict), ex)
+
+    if user_id == admin["user_id"]:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    tasks = [update_db(), update_cache()]
+    await asyncio.gather(*tasks)
+    await executors.user.update_user_is_delete(
+        user_id=user_id,
+        is_deleted=is_deleted
+    )
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.delete("/user", summary="强制用户下线")
+async def update_user_deleted(
+
+        _admin: dict = Depends(get_current_admin),
+        session_id: str = Body(max_length=32, embed=True),
+        session_redis: Redis = Depends(get_session_redis),
+):
+    """
+    ## 参数列表说明:
+    **session_id**: 要下线用户的session_id（最大长度不超过32）；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    session_str_id = SESSION_PREFIX + session_id
+    await session_redis.delete(session_str_id)
+    return SmartOJResponse(ResponseCodes.OK)

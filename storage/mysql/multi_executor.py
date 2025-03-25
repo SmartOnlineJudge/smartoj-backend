@@ -98,6 +98,24 @@ class UserExecutor(MySQLExecutor):
             return [], 0
         return users, total["count(*)"]
 
+    async def update_user_is_delete(
+            self,
+            user_id: str,
+            is_deleted: bool,
+    ):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                sql = """
+                    UPDATE user
+                    SET is_deleted = %s
+                    WHERE user_id = %s
+                """
+                # try:
+                await cursor.execute(sql, (is_deleted, user_id))
+                await connection.commit()
+            # except aiomysql.MySQLError as e:
+            #     print(e)
+
 
 class UserDynamicExecutor(MySQLExecutor):
     async def create_user_dynamic(
