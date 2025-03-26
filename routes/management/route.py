@@ -121,7 +121,6 @@ async def get_user_data(
 
 @router.get("/user/status", summary="分页获取用户登录状态信息")
 async def get_user_status(
-
         _: dict = Depends(get_current_admin),
         page: int = Query(1, ge=1),
         size: int = Query(5, ge=1),
@@ -191,7 +190,7 @@ async def update_user_deleted(
     **user_id**: 要修改信息的用户id（最大长度不超过20）；必须；请求体 </br>
     **is_deleted**: 该用户是否禁用（bool值）；必须；请求体 </br>
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功
+    **200**: 业务逻辑执行成功</br>
     **310**: 当前帐号权限不足，管理员不能禁用自己的账号
     """
 
@@ -205,6 +204,8 @@ async def update_user_deleted(
     async def update_cache():
         """更新缓存"""
         user_str_id = USER_PREFIX + user_id
+        if await session_redis.exists(user_str_id) == 0:
+            return
         user_str = await session_redis.get(user_str_id)
         user_dict = json.loads(user_str)
         user_dict["is_deleted"] = is_deleted
@@ -219,8 +220,7 @@ async def update_user_deleted(
 
 
 @router.delete("/user", summary="强制用户下线")
-async def update_user_deleted(
-
+async def update_user_down(
         _admin: dict = Depends(get_current_admin),
         session_id: str = Body(max_length=32, embed=True),
         session_redis: Redis = Depends(get_session_redis),
