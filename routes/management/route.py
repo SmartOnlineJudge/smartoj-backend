@@ -115,7 +115,9 @@ async def get_user_data(
     results = []
     for user in users:
         model = UserListModel(**user)
-        results.append(mask(model.model_dump()))
+        result = mask(model.model_dump())
+        result["is_superuser"] = '是' if user["is_superuser"] else '否'
+        results.append(result)
     return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
 
 

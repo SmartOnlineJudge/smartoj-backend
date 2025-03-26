@@ -74,9 +74,12 @@ async def authenticate(
     if auth_type not in auth_functions:
         return {}
     auth_function = auth_functions[auth_type]
-    return await auth_function(
+    user = await auth_function(
         email=email, password=password, github_token=github_token, qq_token=qq_token
     )
+    if user and user["is_deleted"]:
+        return {}
+    return user
 
 
 def parse_user_agent(raw_user_agent: str):
@@ -146,8 +149,10 @@ async def get_current_user(
     # 获取用户信息
     user_str = await session_redis.get(USER_PREFIX + session["user_id"])
     user: dict = json.loads(user_str)
+    # 判断用户是否被禁用
     if user["is_deleted"]:
-        raise HTTPException(status_code=401, detail="当前账号已被禁用")
+        await session_redis.delete(session_name)
+        raise HTTPException(status_code=401, detail="当前账号已被禁用，请联系管理员")
     # 对比 Session 版本号
     if session["session_version"] != user["session_version"]:
         await session_redis.delete(session_name)
