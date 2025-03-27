@@ -14,7 +14,8 @@ _default_connection_pool = ConnectionPool(
     host=settings.REDIS_CONF["default"]["HOST"],
     port=settings.REDIS_CONF["default"]["PORT"],
     db=settings.REDIS_CONF["default"]["DB"],
-    decode_responses=True
+    decode_responses=True,
+    password=settings.REDIS_CONF["default"]["PASSWORD"]
 )
 
 _session_connection_pool = ConnectionPool(
@@ -22,7 +23,8 @@ _session_connection_pool = ConnectionPool(
     host=settings.REDIS_CONF["session"]["HOST"],
     port=settings.REDIS_CONF["session"]["PORT"],
     db=settings.REDIS_CONF["session"]["DB"],
-    decode_responses=True
+    decode_responses=True,
+    password=settings.REDIS_CONF["session"]["PASSWORD"]
 )
 
 

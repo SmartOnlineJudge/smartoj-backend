@@ -14,17 +14,20 @@
         "default": {
           "HOST": "127.0.0.1",
           "PORT": 6379,
-          "DB": 0
+          "DB": 0,
+          "PASSWORD": null
         },
         "session": {
           "HOST": "127.0.0.1",
           "PORT": 6379,
-          "DB": 1
+          "DB": 1,
+          "PASSWORD": null
         },
         "mq": {
           "HOST": "127.0.0.1",
           "PORT": 6379,
-          "DB": 2
+          "DB": 2,
+          "PASSWORD": null
         }
       }
     },

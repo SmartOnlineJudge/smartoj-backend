@@ -6,7 +6,10 @@ from utils.mail import send_email
 
 
 _mq_conf = settings.REDIS_CONF["mq"]
-_redis_url = f"redis://{_mq_conf['HOST']}:{_mq_conf['PORT']}/{_mq_conf['DB']}"
+if _mq_conf["PASSWORD"] is not None:
+    _redis_url = f"redis://:{_mq_conf['PASSWORD']}@{_mq_conf['HOST']}:{_mq_conf['PORT']}/{_mq_conf['DB']}"
+else:
+    _redis_url = f"redis://{_mq_conf['HOST']}:{_mq_conf['PORT']}/{_mq_conf['DB']}"
 
 broker = AioPikaBroker(
     url=settings.RABBITMQ_CONF["url"],
