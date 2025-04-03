@@ -16,7 +16,11 @@ async def lifespan(_: FastAPI):
     await broker.shutdown()  # 关闭消息队列服务
 
 
-app = FastAPI(title="SmartOJ-后端接口文档", lifespan=lifespan)
+app = FastAPI(
+    title="SmartOJ-后端接口文档",
+    lifespan=lifespan,
+    swagger_ui_parameters={"persistAuthorization": True}
+)
 
 app.include_router(user_router, prefix="/user", tags=["用户"])
 app.include_router(question_router, prefix="/question", tags=["题目"])

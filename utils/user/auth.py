@@ -7,6 +7,7 @@ import user_agents
 from redis.asyncio import Redis
 from fastapi import Depends, HTTPException
 from fastapi.requests import Request
+from fastapi.security import APIKeyCookie
 from pydantic import EmailStr
 
 import settings
@@ -19,6 +20,8 @@ from .security import password_hash
 SESSION_PREFIX = CachePrefix.SESSION_PREFIX
 USER_PREFIX = CachePrefix.USER_PREFIX
 SESSION_MAX_AGE = settings.SESSION_MAX_AGE
+
+cookie_scheme = APIKeyCookie(name="session_id", auto_error=False)
 
 
 async def _password_auth(email: str, password: str, **_) -> dict:
@@ -135,10 +138,9 @@ async def logout(request: Request):
 
 
 async def get_current_user(
-    request: Request,
+    session_id: str = Depends(cookie_scheme),
     session_redis: Redis = Depends(get_session_redis),
 ) -> dict | None:
-    session_id = request.cookies.get("session_id")
     if not session_id:
         raise HTTPException(status_code=401, detail="未登录")
     session_name = SESSION_PREFIX + session_id
