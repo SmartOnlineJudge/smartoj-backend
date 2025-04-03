@@ -116,7 +116,41 @@ class UserExecutor(MySQLExecutor):
                 except aiomysql.MySQLError:
                     await connection.rollback()
 
+    async def update_user_password(
+            self,
+            user_id: str,
+            password: str,
+    ):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                sql = """
+                    UPDATE user
+                    SET password = %s
+                    WHERE user_id = %s
+                """
+                try:
+                    await cursor.execute(sql, (password_hash(password, settings.SECRETS["PASSWORD"]), user_id))
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                    await connection.rollback()
 
+    async def update_user_email(
+            self,
+            user_id: str,
+            email: str,
+    ):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                sql = """
+                    UPDATE user
+                    SET email = %s
+                    WHERE user_id = %s
+                """
+                try:
+                    await cursor.execute(sql, (email, user_id))
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                    await connection.rollback()
 class UserDynamicExecutor(MySQLExecutor):
     async def create_user_dynamic(
             self,

@@ -21,8 +21,8 @@ from storage.mysql import executors
 from storage.cache import get_session_redis, Redis, CachePrefix
 from mq.broker import send_email_task
 
-
 router = APIRouter()
+VERIFICATION_CODE_PREFIX = CachePrefix.VERIFICATION_CODE_PREFIX
 
 
 @router.get("/", summary="获取当前用户信息")
@@ -40,10 +40,10 @@ async def user_logout(request: Request):
 
 @router.post("/avatar", summary="用户上传头像")
 async def upload_user_avatar(
-    avatar: UploadFile,
-    user: dict = Depends(get_current_user),
-    minio_client: Minio = Depends(get_minio_client),
-    session_redis: Redis = Depends(get_session_redis),
+        avatar: UploadFile,
+        user: dict = Depends(get_current_user),
+        minio_client: Minio = Depends(get_minio_client),
+        session_redis: Redis = Depends(get_session_redis),
 ):
     """
     ## 参数列表说明:
@@ -111,10 +111,10 @@ async def upload_user_avatar(
 
 @router.post("/verification-code", summary="发送验证码")
 async def send_verification_code(
-    request: Request,
-    verification_code_type: VerificationCodeType = Body(embed=True),
-    recipient: EmailStr = Body("test@smartoj.com", embed=True),
-    session_redis: Redis = Depends(get_session_redis),
+        request: Request,
+        verification_code_type: VerificationCodeType = Body(embed=True),
+        recipient: EmailStr = Body("test@smartoj.com", embed=True),
+        session_redis: Redis = Depends(get_session_redis),
 ):
     """
     ## 参数列表说明:
@@ -138,10 +138,10 @@ async def send_verification_code(
         return SmartOJResponse(ResponseCodes.EMAIL_NOT_ALLOW_NULL)
 
     cache_name = (
-        CachePrefix.VERIFICATION_CODE_PREFIX
-        + real_recipient
-        + "-"
-        + verification_code_type.value
+            CachePrefix.VERIFICATION_CODE_PREFIX
+            + real_recipient
+            + "-"
+            + verification_code_type.value
     )
     cache_content = await session_redis.get(cache_name)
     if cache_content and (int(time.time()) - json.loads(cache_content)["created"] < 60):
@@ -157,4 +157,79 @@ async def send_verification_code(
 
     await send_email_task.kiq(real_recipient, "你的一次性代码", content)
 
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+async def get_verification_dict(
+        user: dict,
+        session_redis: Redis,
+) -> dict:
+    verification = VERIFICATION_CODE_PREFIX + user["email"] + "-change_email"
+    verification_str = await session_redis.get(verification)
+    if not verification_str:
+        return {}
+    verification_dict = json.loads(verification_str)
+    return verification_dict
+
+
+@router.post("/verification", summary="验证码验证")
+async def verify_verification(
+        vfcode: str = Body(max_length=32),
+        user: dict = Depends(get_current_user),
+        session_redis: Redis = Depends(get_session_redis),
+):
+    """
+    ## 参数列表说明:
+    **vfcode**: 用户输入的验证码；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功</br>
+    **250**: 验证码输入错误或已过期
+    """
+    verification_dict = await get_verification_dict(user, session_redis)
+    if not verification_dict:
+        return SmartOJResponse(ResponseCodes.CAPTCHA_INVALID)
+    if vfcode != verification_dict["code"]:
+        return SmartOJResponse(ResponseCodes.CAPTCHA_INVALID)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.patch("/password", summary="用户修改密码")
+async def update_password(
+        vfcode_c: str = Body(max_length=32),
+        user: dict = Depends(get_current_user),
+        new_password: str = Body(max_length=32),
+        session_redis: Redis = Depends(get_session_redis),
+):
+    """
+    ## 参数列表说明:
+    **new_password**: 用户改的新密码；必须；请求体 </br>
+    **vfcode_c**: 客户端输入验证码；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功</br>
+    **250**: 验证码输入错误或已过期
+    """
+    response = await verify_verification(
+        vfcode=vfcode_c,
+        user=user,
+        session_redis=session_redis,
+    )
+    if response.code != 200:
+        return response
+
+    async def update_db():
+        await executors.user.update_user_password(
+            user_id=user["user_id"],
+            password=new_password
+        )
+
+    async def update_cache():
+        user_str_id = USER_PREFIX + user["user_id"]
+        user_str = await session_redis.get(user_str_id)
+        user_dict = json.loads(user_str)
+        user_dict["session_version"] += 1
+        ex = await session_redis.ttl(user_str_id)
+        await session_redis.set(user_str_id, json.dumps(user_dict), ex)
+
+    tasks = [update_db(), update_cache()]
+    await asyncio.gather(*tasks)
     return SmartOJResponse(ResponseCodes.OK)
