@@ -14,13 +14,6 @@ class AuthType(Enum):
     PASSWORD = "password"
 
 
-class VerificationCodeType(Enum):
-    register = "register"
-    login = "login"
-    change_password = "change_password"
-    change_email = "change_email"
-
-
 class LoginModel(BaseModel):
     email: Optional[EmailStr] = ""
     password: Optional[str] = ""

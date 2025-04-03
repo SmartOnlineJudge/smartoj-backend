@@ -151,6 +151,8 @@ class UserExecutor(MySQLExecutor):
                     await connection.commit()
                 except aiomysql.MySQLError:
                     await connection.rollback()
+
+
 class UserDynamicExecutor(MySQLExecutor):
     async def create_user_dynamic(
             self,

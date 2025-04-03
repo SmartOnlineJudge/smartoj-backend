@@ -1,3 +1,5 @@
+import json
+
 from redis.asyncio import Redis, ConnectionPool
 
 import settings
@@ -34,3 +36,14 @@ def get_default_redis():
 
 def get_session_redis():
     return Redis(connection_pool=_session_connection_pool)
+
+
+async def update_session_version(user_id: str, session_redis: Redis):
+    cache_name = CachePrefix.USER_PREFIX + user_id
+    user_str = await session_redis.get(cache_name)
+    if not user_str:
+        return
+    user_dict = json.loads(user_str)
+    user_dict["session_version"] += 1
+    ex = await session_redis.ttl(cache_name)
+    await session_redis.set(cache_name, json.dumps(user_dict), ex=ex)

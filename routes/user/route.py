@@ -8,17 +8,15 @@ import time
 import filetype
 from minio import Minio
 from minio.error import MinioException
-from pydantic import EmailStr
 from fastapi import APIRouter, UploadFile, Depends, Body
 from fastapi.requests import Request
 
-from .models import VerificationCodeType
 from utils.user.auth import logout, get_current_user, USER_PREFIX
 from utils.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.oss import get_minio_client, MAX_AVATAR_SIZE, AVATAR_BUCKET_NAME
 from storage.mysql import executors
-from storage.cache import get_session_redis, Redis, CachePrefix
+from storage.cache import get_session_redis, Redis, CachePrefix, update_session_version
 from mq.broker import send_email_task
 
 router = APIRouter()
@@ -43,7 +41,7 @@ async def upload_user_avatar(
         avatar: UploadFile,
         user: dict = Depends(get_current_user),
         minio_client: Minio = Depends(get_minio_client),
-        session_redis: Redis = Depends(get_session_redis),
+        session_redis: Redis = Depends(get_session_redis)
 ):
     """
     ## 参数列表说明:
@@ -112,40 +110,31 @@ async def upload_user_avatar(
 @router.post("/verification-code", summary="发送验证码")
 async def send_verification_code(
         request: Request,
-        verification_code_type: VerificationCodeType = Body(embed=True),
-        recipient: EmailStr = Body("test@smartoj.com", embed=True),
-        session_redis: Redis = Depends(get_session_redis),
+        recipient: str = Body("", embed=True),
+        session_redis: Redis = Depends(get_session_redis)
 ):
     """
     ## 参数列表说明:
-    **verification_code_type**: 要发送的验证码类型 `register`、`login`、`change_password`、`change_email`；必须；请求体 </br>
-    **recipient**: 目标邮箱；当验证码类型是 `login` 和 `register` 时必须；请求体
+    **recipient**: 收件邮箱；如果是一个空字符串，那么默认使用当前用户已绑定的邮箱；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **235**: 邮箱不能为空 </br>
     **240**: 请求过于频繁
     """
-    verification_code = "".join(random.choices("0123456789", k=6))
-    content = f"您的验证码是：{verification_code}，该验证码 5 分钟内有效，请勿泄露给他人，若非本人操作请忽略本邮件。"
-
-    if verification_code_type.value in ("login", "register"):
-        real_recipient = str(recipient)
-    else:
+    if not recipient:
         user: dict = await get_current_user(request, session_redis)
-        real_recipient = user["email"]
+        recipient = user["email"]
 
-    if not real_recipient:
+    if not recipient:
         return SmartOJResponse(ResponseCodes.EMAIL_NOT_ALLOW_NULL)
 
-    cache_name = (
-            CachePrefix.VERIFICATION_CODE_PREFIX
-            + real_recipient
-            + "-"
-            + verification_code_type.value
-    )
+    cache_name = VERIFICATION_CODE_PREFIX + recipient
     cache_content = await session_redis.get(cache_name)
     if cache_content and (int(time.time()) - json.loads(cache_content)["created"] < 60):
         return SmartOJResponse(ResponseCodes.REQUEST_FREQUENTLY)
+
+    verification_code = "".join(random.choices("0123456789", k=6))
+    content = f"您的验证码是：<b><u>{verification_code}</u></b>，该验证码 5 分钟内有效，请勿泄露给他人，若非本人操作请忽略本邮件。"
 
     cache_content = json.dumps(
         {
@@ -155,39 +144,34 @@ async def send_verification_code(
     )
     await session_redis.set(cache_name, cache_content, ex=60 * 5)
 
-    await send_email_task.kiq(real_recipient, "你的一次性代码", content)
+    await send_email_task.kiq(recipient, "你的一次性代码", content)
 
     return SmartOJResponse(ResponseCodes.OK)
 
 
-async def get_verification_dict(
-        user: dict,
-        session_redis: Redis,
-) -> dict:
-    verification = VERIFICATION_CODE_PREFIX + user["email"] + "-change_email"
-    verification_str = await session_redis.get(verification)
-    if not verification_str:
-        return {}
-    verification_dict = json.loads(verification_str)
-    return verification_dict
-
-
-@router.post("/verification", summary="验证码验证")
-async def verify_verification(
-        vfcode: str = Body(max_length=32),
-        user: dict = Depends(get_current_user),
-        session_redis: Redis = Depends(get_session_redis),
+@router.post("/check-verification-code", summary="校验验证码是否正确")
+async def check_verification_code(
+        request: Request,
+        vfcode: str = Body(pattern=r"^[0-9]{6}$"),
+        email: str = Body(""),
+        session_redis: Redis = Depends(get_session_redis)
 ):
     """
     ## 参数列表说明:
     **vfcode**: 用户输入的验证码；必须；请求体 </br>
+    **email**: 需要验证的邮箱；如果是一个空字符串，那么默认使用当前用户已绑定的邮箱；请求体
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功</br>
+    **200**: 业务逻辑执行成功 </br>
     **250**: 验证码输入错误或已过期
     """
-    verification_dict = await get_verification_dict(user, session_redis)
-    if not verification_dict:
+    if not email:
+        user: dict = await get_current_user(request, session_redis)
+        email = user["email"]
+    cache_name = VERIFICATION_CODE_PREFIX + email
+    verification_str = await session_redis.get(cache_name)
+    if not verification_str:
         return SmartOJResponse(ResponseCodes.CAPTCHA_INVALID)
+    verification_dict = json.loads(verification_str)
     if vfcode != verification_dict["code"]:
         return SmartOJResponse(ResponseCodes.CAPTCHA_INVALID)
     return SmartOJResponse(ResponseCodes.OK)
@@ -195,25 +179,29 @@ async def verify_verification(
 
 @router.patch("/password", summary="用户修改密码")
 async def update_password(
-        vfcode_c: str = Body(max_length=32),
-        user: dict = Depends(get_current_user),
+        request: Request,
+        vfcode: str = Body(pattern=r"^[0-9]{6}$"),
         new_password: str = Body(max_length=32),
         session_redis: Redis = Depends(get_session_redis),
+        user: dict = Depends(get_current_user)
 ):
     """
     ## 参数列表说明:
     **new_password**: 用户改的新密码；必须；请求体 </br>
-    **vfcode_c**: 客户端输入验证码；必须；请求体 </br>
+    **vfcode**: 客户端输入验证码；必须；请求体 </br>
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功</br>
+    **200**: 业务逻辑执行成功 </br>
     **250**: 验证码输入错误或已过期
     """
-    response = await verify_verification(
-        vfcode=vfcode_c,
-        user=user,
+    response = await check_verification_code(
+        request,
+        vfcode=vfcode,
         session_redis=session_redis,
+        email=user["email"]
     )
-    if response.code != 200:
+    response_data = json.loads(response.body)
+
+    if response_data["code"] != 200:
         return response
 
     async def update_db():
@@ -223,12 +211,7 @@ async def update_password(
         )
 
     async def update_cache():
-        user_str_id = USER_PREFIX + user["user_id"]
-        user_str = await session_redis.get(user_str_id)
-        user_dict = json.loads(user_str)
-        user_dict["session_version"] += 1
-        ex = await session_redis.ttl(user_str_id)
-        await session_redis.set(user_str_id, json.dumps(user_dict), ex)
+        await update_session_version(user["user_id"], session_redis)
 
     tasks = [update_db(), update_cache()]
     await asyncio.gather(*tasks)
