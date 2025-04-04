@@ -10,6 +10,7 @@ from minio import Minio
 from minio.error import MinioException
 from fastapi import APIRouter, UploadFile, Depends, Body
 from fastapi.requests import Request
+from pydantic import EmailStr
 
 from utils.user.auth import logout, get_current_user, USER_PREFIX
 from utils.user.security import mask
@@ -212,6 +213,54 @@ async def update_password(
 
     async def update_cache():
         await update_session_version(user["user_id"], session_redis)
+
+    tasks = [update_db(), update_cache()]
+    await asyncio.gather(*tasks)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.patch("/email", summary="用户修改邮箱")
+async def update_email(
+        request: Request,
+        vfcode: str = Body(pattern=r"^[0-9]{6}$"),
+        user: dict = Depends(get_current_user),
+        new_email: EmailStr = Body("test@smartoj.com"),
+        session_redis: Redis = Depends(get_session_redis),
+):
+    """
+    ## 参数列表说明:
+    **new_email**: 用户改的新邮箱；必须；请求体 </br>
+    **vfcode**: 用户输入的验证码；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功</br>
+    **250**: 验证码输入错误或已过期
+    """
+    response = await check_verification_code(
+        request,
+        vfcode=vfcode,
+        session_redis=session_redis,
+        email=new_email
+    )
+    response_data = json.loads(response.body)
+    if response_data["code"] != 200:
+        return response
+
+    async def update_db():
+        await executors.user.update_user_email(
+            user_id=user["user_id"],
+            email=new_email
+        )
+
+    async def update_cache():
+        cache_name = CachePrefix.USER_PREFIX + user["user_id"]
+        user_str = await session_redis.get(cache_name)
+        if not user_str:
+            return
+        user_dict = json.loads(user_str)
+        user_dict["session_version"] += 1
+        user_dict["email"] = new_email
+        ex = await session_redis.ttl(cache_name)
+        await session_redis.set(cache_name, json.dumps(user_dict), ex=ex)
 
     tasks = [update_db(), update_cache()]
     await asyncio.gather(*tasks)
