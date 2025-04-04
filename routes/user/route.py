@@ -12,7 +12,7 @@ from fastapi import APIRouter, UploadFile, Depends, Body
 from fastapi.requests import Request
 from pydantic import EmailStr
 
-from utils.user.auth import logout, get_current_user, USER_PREFIX
+from utils.user.auth import logout, get_current_user, USER_PREFIX, cookie_scheme
 from utils.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.oss import get_minio_client, MAX_AVATAR_SIZE, AVATAR_BUCKET_NAME
@@ -123,7 +123,8 @@ async def send_verification_code(
     **240**: 请求过于频繁
     """
     if not recipient:
-        user: dict = await get_current_user(request, session_redis)
+        session_id = await cookie_scheme(request)
+        user: dict = await get_current_user(session_id, session_redis)
         recipient = user["email"]
 
     if not recipient:
@@ -166,7 +167,8 @@ async def check_verification_code(
     **250**: 验证码输入错误或已过期
     """
     if not email:
-        user: dict = await get_current_user(request, session_redis)
+        session_id = await cookie_scheme(request)
+        user: dict = await get_current_user(session_id, session_redis)
         email = user["email"]
     cache_name = VERIFICATION_CODE_PREFIX + email
     verification_str = await session_redis.get(cache_name)
@@ -239,7 +241,7 @@ async def update_email(
         request,
         vfcode=vfcode,
         session_redis=session_redis,
-        email=new_email
+        email=str(new_email)
     )
     response_data = json.loads(response.body)
     if response_data["code"] != 200:
