@@ -1,3 +1,4 @@
+import json
 import time
 
 import aiomysql
@@ -210,13 +211,68 @@ class UserDynamicExecutor(MySQLExecutor):
                 except aiomysql.MySQLError:
                     await connection.rollback()
 
+    async def get_publisher_by_qid(self, q_ids: list[int]) -> list:
+        cursor = await self.cursor()
+        placeholder = ",".join(["%s"] * len(q_ids))
+        sql = f"""
+            select ud.id,ud.name
+            from user_dynamic ud
+            inner join question q on ud.id = q.publisher_id
+            where q.id in ({placeholder})
+        """
+
+        try:
+            await cursor.execute(sql, q_ids)
+            publisher = await cursor.fetchall()
+
+        except aiomysql.MySQLError:
+            return []
+        return publisher
+
 
 class QuestionExecutor(MySQLExecutor):
-    pass
+    async def get_question_info(self, page: int, size: int) -> tuple[list, int]:
+        cursor = await self.cursor()
+        sql1 = f"""
+            select q.id, q.title, q.description, q.difficulty, 
+             DATE_FORMAT(q.created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS created_at,q.submission_quantity,q.pass_quantity,q.is_deleted,q.publisher_id
+            from question q
+            limit %s, %s
+        """
+        sql2 = f"""
+            select count(*) from smartoj.question
+        """
+        try:
+            await cursor.execute(sql1, (size * (page - 1), size))
+            questions = await cursor.fetchall()
+            await cursor.execute(sql2)
+            total = await cursor.fetchone()
+
+        except aiomysql.MySQLError:
+            return [], 0
+
+        return questions, total["count(*)"]
 
 
 class TagExecutor(MySQLExecutor):
-    pass
+    async def get_tags_by_qid(self, q_ids: list[int]) -> list:
+        cursor = await self.cursor()
+        placeholder = ",".join(["%s"] * len(q_ids))
+        sql = f"""
+            select t.id,t.name,q.id as qid
+            from tag t
+            inner join question_tag qt on qt.tag_id = t.id
+            inner join question q on q.id = qt.question_id
+            where q.id in ({placeholder})
+        """
+
+        try:
+            await cursor.execute(sql, q_ids)
+            tags = await cursor.fetchall()
+
+        except aiomysql.MySQLError:
+            return []
+        return tags
 
 
 class QuestionTagExecutor(MySQLExecutor):
@@ -224,23 +280,110 @@ class QuestionTagExecutor(MySQLExecutor):
 
 
 class LanguageExecutor(MySQLExecutor):
-    pass
+    async def get_language_by_lid(self, lid: int) -> list:
+        cursor = await self.cursor()
+        sql = f"""
+            select l.name,l.version
+            from language l
+            where l.id = %s
+        """
+
+        try:
+            await cursor.execute(sql, lid)
+            language = await cursor.fetchall()
+
+        except aiomysql.MySQLError:
+            return []
+        return language
+
+    async def get_all_languages(self) -> list:
+        cursor = await self.cursor()
+        sql = f"""
+            select l.id,l.name,l.version from language l
+        """
+        try:
+            await cursor.execute(sql)
+            languages = await cursor.fetchall()
+
+        except aiomysql.MySQLError:
+            return []
+        return languages
 
 
 class SolvingFrameworkExecutor(MySQLExecutor):
-    pass
+    async def get_solving_frameworks_by_qid(self, q_ids: list[int]) -> list:
+        cursor = await self.cursor()
+        placeholder = ",".join(["%s"] * len(q_ids))
+        sql = f"""
+            select s.id,s.code_framework,s.language_id,s.question_id as qid,s.language_id as lid
+            from solving_framework s
+            where s.question_id in ({placeholder})
+        """
+
+        try:
+            await cursor.execute(sql, q_ids)
+            solving_framework = await cursor.fetchall()
+
+        except aiomysql.MySQLError:
+            return []
+        return solving_framework
 
 
 class TestExecutor(MySQLExecutor):
-    pass
+    async def get_tests_by_qid(self, q_ids: list[int]) -> list:
+        cursor = await self.cursor()
+        placeholder = ",".join(["%s"] * len(q_ids))
+        sql = f"""
+            select t.id,t.input_output,t.question_id as qid
+            from test t
+            where t.question_id in ({placeholder})
+        """
+
+        try:
+            await cursor.execute(sql, q_ids)
+            test = await cursor.fetchall()
+
+        except aiomysql.MySQLError:
+            return []
+        return test
 
 
 class JudgeTemplateExecutor(MySQLExecutor):
-    pass
+    async def get_judge_templates_by_qid(self, q_ids: list[int]) -> list:
+        cursor = await self.cursor()
+        placeholder = ",".join(["%s"] * len(q_ids))
+        sql = f"""
+            select j.id,j.code,j.language_id,j.question_id as qid,j.language_id as lid
+            from judge_template j
+            where j.language_id in ({placeholder})
+        """
+
+        try:
+            await cursor.execute(sql, q_ids)
+            solving_framework = await cursor.fetchall()
+
+        except aiomysql.MySQLError:
+            return []
+        return solving_framework
 
 
 class MemoryTimeLimitExecutor(MySQLExecutor):
-    pass
+    async def get_memory_limits_by_qid(self, q_ids: list[int]) -> list:
+        cursor = await self.cursor()
+        placeholder = ",".join(["%s"] * len(q_ids))
+        sql = f"""
+            select m.id,m.memory_limit,m.time_limit,m.language_id,m.question_id as qid,m.language_id as lid
+            from memory_time_limit m
+            where m.question_id in ({placeholder})
+        """
+
+        try:
+            await cursor.execute(sql, q_ids)
+            memory_limit = await cursor.fetchall()
+
+        except aiomysql.MySQLError:
+            return []
+        return memory_limit
 
 
 class SolvedHistoryExecutor(MySQLExecutor):

@@ -236,3 +236,65 @@ async def update_user_down(
     session_str_id = SESSION_PREFIX + session_id
     await session_redis.delete(session_str_id)
     return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.get("/question", summary="题目信息查询")
+async def get_question_info(
+        _: dict = Depends(get_current_admin),
+        page: int = Query(1, ge=1),
+        size: int = Query(5, ge=1),
+):
+    """
+    ## 参数列表说明:
+    **page**: 查询的页码；必须；默认为1；查询参数 </br>
+    **size**: 每页的数据数；必须；请求体；默认为5；查询参数 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    questions, total = await executors.question.get_question_info(page, size)
+    q_ids = [q["id"] for q in questions]
+    results = []
+    publishers = await executors.user_dynamic.get_publisher_by_qid(q_ids)
+    tags = await executors.tag.get_tags_by_qid(q_ids)
+    tests = await executors.test.get_tests_by_qid(q_ids)
+    memory_time_limits = await executors.memory_time_limit.get_memory_limits_by_qid(q_ids)
+    solving_frameworks = await executors.solving_framework.get_solving_frameworks_by_qid(q_ids)
+    judge_templates = await executors.judge_template.get_judge_templates_by_qid(q_ids)
+    languages = await executors.language.get_all_languages()
+    lang_dict = {lang["id"]: {"id": lang["id"], "name": lang["name"]} for lang in languages}
+
+    def cat_language(datas):
+        return [
+            {**data, "language": lang_dict.get(data["lid"])}
+            for data in datas
+        ]
+
+    memory_time_limits = cat_language(memory_time_limits)
+    solving_frameworks = cat_language(solving_frameworks)
+    judge_templates = cat_language(judge_templates)
+    for question in questions:
+        qid = question["id"]
+        pid = question["publisher_id"]
+        publisher = [{"id": publisher["id"], "name": publisher["name"]}
+                     for publisher in publishers
+                     if publisher["id"] == pid]
+        del question['publisher_id']
+        result = {
+            **question,
+            "publisher": publisher[0],
+            "tags": [{"id": tag["id"], "name": tag["name"]} for tag in tags if tag["qid"] == qid],
+            "tests": [{"id": test["id"], "input_output": test["input_output"]} for test in tests if test["qid"] == qid],
+            "memory_time_limits": [{"id": memory_time_limit["id"], "memory_limit": memory_time_limit["memory_limit"],
+                                    "time_limit": memory_time_limit["time_limit"],
+                                    "language": memory_time_limit["language"]} for memory_time_limit in
+                                   memory_time_limits if memory_time_limit["qid"] == qid],
+            "solving_frameworks": [
+                {"id": solving_framework["id"], "code_framework": solving_framework["code_framework"],
+                 "language": solving_framework["language"]} for
+                solving_framework in solving_frameworks if solving_framework["qid"] == qid],
+            "judge_templates": [
+                {"id": judge_template["id"], "code": judge_template["code"], "language": judge_template["language"]} for
+                judge_template in judge_templates if judge_template["qid"] == qid],
+        }
+        results.append(result)
+    return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
