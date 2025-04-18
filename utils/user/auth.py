@@ -2,6 +2,7 @@ import time
 import json
 import secrets
 import asyncio
+from functools import lru_cache
 
 import user_agents
 from redis.asyncio import Redis
@@ -13,7 +14,7 @@ from pydantic import EmailStr
 import settings
 from storage.mysql import executors
 from storage.cache import get_session_redis, CachePrefix
-from routes.user.models import UserOutModel
+from routes.user.models import UserOutModel, AuthType
 from .security import password_hash
 
 
@@ -24,35 +25,97 @@ SESSION_MAX_AGE = settings.SESSION_MAX_AGE
 cookie_scheme = APIKeyCookie(name="session_id", auto_error=False)
 
 
-async def _password_auth(email: str, password: str, **_) -> dict:
-    if not email or not password:
-        return {}
-    user = await executors.user.get_user_by_email(email)
-    if not user:
-        return {}
-    if password_hash(password, settings.SECRETS["PASSWORD"]) == user["password"]:
+class Authenticator:
+    """
+    用户统一认证中心类
+    """
+    def __init__(self):
+        self.auth_methods = {
+            "password": self.authenticate_by_password,  # noqa
+            "email": self.authenticate_by_email,  # noqa
+            "github": self.authenticate_by_github,  # noqa
+            "qq": self.authenticate_by_qq,  # noqa
+        }
+
+    async def authenticate(
+        self,
+        *,
+        email: str | EmailStr = "",
+        password: str = "",
+        auth_type: str | AuthType = "",
+        code: str = "",
+        verification_code: str = "",
+    ) -> dict:
+        """用户多方式登录认证函数 """
+        if isinstance(auth_type, AuthType):
+            auth_type = auth_type.value
+        if auth_type not in self.auth_methods:
+            return {}
+        auth_function = self.auth_methods[auth_type]
+        user = await auth_function(
+            email=email,
+            password=password,
+            code=code,
+            verification_code=verification_code,
+        )
+        if user and user["is_deleted"]:
+            return {}
         return user
-    return {}
+
+    @classmethod
+    async def authenticate_by_password(cls, email: str, password: str, **_):
+        if not email or not password:
+            return {}
+        user = await executors.user.get_user_by_email(email)
+        if not user:
+            return {}
+        if password_hash(password, settings.SECRETS["PASSWORD"]) == user["password"]:
+            return user
+        return {}
+
+    @classmethod
+    async def authenticate_by_email(cls, email: str, verification_code: str, **_):
+        session_redis = get_session_redis()
+        cache_name = CachePrefix.VERIFICATION_CODE_PREFIX + email
+        cache_content = await session_redis.get(cache_name)
+        if not cache_content:
+            return {}
+        content = json.loads(cache_content)
+        if verification_code != content["code"]:
+            return {}
+        return await executors.user.get_user_by_email(email)
+
+    @classmethod
+    async def authenticate_by_qq(cls, code: str, **_):
+        pass
+
+    @classmethod
+    async def authenticate_by_github(cls, code: str, **_):
+        pass
 
 
-async def _email_auth(email: str, **_):
-    pass
+@lru_cache()
+def get_authenticator():
+    return Authenticator()
 
 
-async def _github_auth(github_token: str, **_):
-    pass
-
-
-async def _qq_auth(qq_token: str, **_):
-    pass
-
-
-auth_functions = {
-    "password": _password_auth,
-    "email": _email_auth,
-    "github": _github_auth,
-    "qq": _qq_auth,
-}
+async def authenticate(
+    *,
+    email: str | EmailStr = "",
+    password: str = "",
+    auth_type: str | AuthType = "",
+    code: str = "",
+    verification_code: str = "",
+) -> dict:
+    """用户多方式登录认证函数 """
+    authenticator = get_authenticator()
+    return await authenticator.authenticate(
+        email=email,
+        password=password,
+        auth_type=auth_type,
+        code=code,
+        verification_code=verification_code,
+    )
 
 
 async def generate_session_id(session_redis: Redis) -> str:
@@ -65,24 +128,6 @@ async def generate_session_id(session_redis: Redis) -> str:
         if not await session_redis.exists(session_name):
             break
     return session_id
-
-
-async def authenticate(
-    email: str | EmailStr = "",
-    password: str = "",
-    github_token: str = "",
-    qq_token: str = "",
-    auth_type: str = "",
-) -> dict:
-    if auth_type not in auth_functions:
-        return {}
-    auth_function = auth_functions[auth_type]
-    user = await auth_function(
-        email=email, password=password, github_token=github_token, qq_token=qq_token
-    )
-    if user and user["is_deleted"]:
-        return {}
-    return user
 
 
 def parse_user_agent(raw_user_agent: str):

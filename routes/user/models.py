@@ -17,8 +17,8 @@ class AuthType(Enum):
 class LoginModel(BaseModel):
     email: Optional[EmailStr] = ""
     password: Optional[str] = ""
-    github_token: Optional[str] = ""
-    qq_token: Optional[str] = ""
+    code: Optional[str] = ""  # 第三方平台认证完毕后传递给前端的参数
+    verification_code: Optional[str] = ""
     auth_type: AuthType
 
 

@@ -12,7 +12,16 @@ from fastapi import APIRouter, UploadFile, Depends, Body
 from fastapi.requests import Request
 from pydantic import EmailStr
 
-from utils.user.auth import logout, get_current_user, USER_PREFIX, cookie_scheme
+import settings
+from .models import LoginModel
+from utils.user.auth import (
+    logout,
+    get_current_user,
+    USER_PREFIX,
+    cookie_scheme,
+    authenticate,
+    login
+)
 from utils.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.oss import get_minio_client, MAX_AVATAR_SIZE, AVATAR_BUCKET_NAME
@@ -24,9 +33,25 @@ router = APIRouter()
 VERIFICATION_CODE_PREFIX = CachePrefix.VERIFICATION_CODE_PREFIX
 
 
-@router.get("/", summary="获取当前用户信息")
+@router.get("", summary="获取当前用户信息")
 def get_user(user: dict = Depends(get_current_user)):
     return SmartOJResponse(ResponseCodes.OK, data=mask(user))
+
+
+@router.post("/login", summary="用户登录")
+async def user_login(request: Request, model: LoginModel):
+    user = await authenticate(**model.model_dump())
+    if not user:
+        return SmartOJResponse(ResponseCodes.LOGIN_FAILED)
+    session_id = await login(request, user)
+    response = SmartOJResponse(ResponseCodes.LOGIN_SUCCESS)
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True,
+        max_age=settings.SESSION_MAX_AGE
+    )
+    return response
 
 
 @router.post("/logout", summary="用户退出登录")
@@ -136,7 +161,7 @@ async def send_verification_code(
         return SmartOJResponse(ResponseCodes.REQUEST_FREQUENTLY)
 
     verification_code = "".join(random.choices("0123456789", k=6))
-    content = f"您的验证码是：<b><u>{verification_code}</u></b>，该验证码 5 分钟内有效，请勿泄露给他人，若非本人操作请忽略本邮件。"
+    content = f"您的验证码是：{verification_code}，该验证码 5 分钟内有效，请勿泄露给他人，若非本人操作请忽略本邮件。"
 
     cache_content = json.dumps(
         {
