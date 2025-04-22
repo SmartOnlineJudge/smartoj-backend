@@ -1,4 +1,5 @@
 import json
+import asyncio
 
 from redis.asyncio import Redis, ConnectionPool
 
@@ -36,6 +37,13 @@ def get_default_redis():
 
 def get_session_redis():
     return Redis(connection_pool=_session_connection_pool)
+
+
+async def close_cache_connections():
+    await asyncio.gather(
+        _default_connection_pool.aclose(),
+        _session_connection_pool.aclose()
+    )
 
 
 async def update_session_version(user_id: str, session_redis: Redis):

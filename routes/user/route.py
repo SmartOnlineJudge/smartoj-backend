@@ -13,7 +13,7 @@ from fastapi.requests import Request
 from pydantic import EmailStr
 
 import settings
-from .models import LoginModel
+from .models import LoginModel, RegisterModel
 from utils.user.auth import (
     logout,
     get_current_user,
@@ -25,7 +25,7 @@ from utils.user.auth import (
 from utils.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from storage.oss import get_minio_client, MAX_AVATAR_SIZE, AVATAR_BUCKET_NAME
-from storage.mysql import executors
+from storage.mysql import executors, create_user_and_dynamic
 from storage.cache import get_session_redis, Redis, CachePrefix, update_session_version
 from mq.broker import send_email_task
 
@@ -36,6 +36,37 @@ VERIFICATION_CODE_PREFIX = CachePrefix.VERIFICATION_CODE_PREFIX
 @router.get("", summary="获取当前用户信息")
 def get_user(user: dict = Depends(get_current_user)):
     return SmartOJResponse(ResponseCodes.OK, data=mask(user))
+
+
+@router.post("/register", summary="用户注册")
+async def user_register(
+        request: Request,
+        model: RegisterModel,
+        session_redis: Redis = Depends(get_session_redis)
+):
+    if model.password1 != model.password2:
+        return SmartOJResponse(ResponseCodes.TWICE_PASSWORD_NOT_MATCH)
+    email = str(model.email)
+    user = await executors.user.get_user_by_email(email)
+    if user:
+        return SmartOJResponse(ResponseCodes.EMAIL_ALREADY_EXISTS)
+    # 校验验证码
+    response = await check_verification_code(
+        request,
+        model.verification_code,
+        email,
+        session_redis,
+    )
+    response_data = json.loads(response.body)
+    if response_data["code"] != 200:
+        return response
+    # 创建用户
+    await create_user_and_dynamic(
+        name=model.name,
+        password=model.password1,
+        email=email,
+    )
+    return SmartOJResponse(ResponseCodes.OK)
 
 
 @router.post("/login", summary="用户登录")

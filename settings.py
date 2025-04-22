@@ -29,3 +29,6 @@ RABBITMQ_CONF: dict = METADATA["rabbitmq"]
 
 # SMTP 邮箱配置
 SMTP_CONF: dict = METADATA["smtp"]
+
+# 默认用户头像，这个是在 MinIO 服务器上的头像路径
+DEFAULT_USER_AVATAR: str = "/user-avatars/default.webp"

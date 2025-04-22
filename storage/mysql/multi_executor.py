@@ -162,7 +162,7 @@ class UserDynamicExecutor(MySQLExecutor):
             profile: str = "",
             avatar: str = "",
     ) -> int:
-        avatar = avatar or "/user-avatars/default.webp"
+        avatar = avatar or settings.DEFAULT_USER_AVATAR
         name = name or str(int(time.time()))
         async with self.connection() as connection:
             async with connection.cursor() as cursor:

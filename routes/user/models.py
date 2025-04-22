@@ -2,7 +2,7 @@ from enum import Enum
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 from utils.models import DatetimeModel
 
@@ -39,3 +39,11 @@ class UserOutModel(DatetimeModel):
 
 class UserListModel(UserOutModel):
     id: int
+
+
+class RegisterModel(BaseModel):
+    name: str
+    password1: str
+    password2: str
+    email: EmailStr
+    verification_code: str = Field("", pattern=r"^[0-9]{6}$", examples=["123456"])

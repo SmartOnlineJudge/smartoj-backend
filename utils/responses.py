@@ -16,6 +16,9 @@ class ResponseCodes:
     LOGIN_SUCCESS = (300, "登录成功")
     LOGIN_FAILED = (305, "登录失败")
     PERMISSION_DENIED = (310, "当前账号权限不足")
+    # 用户响应码
+    TWICE_PASSWORD_NOT_MATCH = (400, "两次密码输入不一致")
+    EMAIL_ALREADY_EXISTS = (410, "当前邮箱已被注册")
 
 
 class SmartOJResponse(JSONResponse):
