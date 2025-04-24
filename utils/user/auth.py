@@ -2,8 +2,9 @@ import time
 import json
 import secrets
 import asyncio
-from functools import lru_cache
 
+import httpx
+from httpx_socks import AsyncProxyTransport
 import user_agents
 from redis.asyncio import Redis
 from fastapi import Depends, HTTPException
@@ -12,10 +13,12 @@ from fastapi.security import APIKeyCookie
 from pydantic import EmailStr
 
 import settings
-from storage.mysql import executors
+from storage.mysql import executors, create_user_and_dynamic
 from storage.cache import get_session_redis, CachePrefix
+from storage.oss import upload_avatar
 from routes.user.models import UserOutModel, AuthType
 from .security import password_hash
+from utils.tools import parse_proxy_url
 
 
 SESSION_PREFIX = CachePrefix.SESSION_PREFIX
@@ -26,44 +29,23 @@ cookie_scheme = APIKeyCookie(name="session_id", auto_error=False)
 
 
 class Authenticator:
-    """
-    用户统一认证中心类
-    """
-    def __init__(self):
-        self.auth_methods = {
-            "password": self.authenticate_by_password,  # noqa
-            "email": self.authenticate_by_email,  # noqa
-            "github": self.authenticate_by_github,  # noqa
-            "qq": self.authenticate_by_qq,  # noqa
-        }
+    async def authenticate(self, **kwargs) -> dict:
+        ...
 
-    async def authenticate(
-        self,
-        *,
-        email: str | EmailStr = "",
-        password: str = "",
-        auth_type: str | AuthType = "",
-        code: str = "",
-        verification_code: str = "",
-    ) -> dict:
-        """用户多方式登录认证函数 """
-        if isinstance(auth_type, AuthType):
-            auth_type = auth_type.value
-        if auth_type not in self.auth_methods:
-            return {}
-        auth_function = self.auth_methods[auth_type]
-        user = await auth_function(
-            email=email,
-            password=password,
-            code=code,
-            verification_code=verification_code,
-        )
-        if user and user["is_deleted"]:
-            return {}
-        return user
 
-    @classmethod
-    async def authenticate_by_password(cls, email: str, password: str, **_):
+class OAuth2Authenticator(Authenticator):
+    client_id: str = None
+    client_secret: str = None
+    get_access_token_url: str = None
+    get_openid_url: str = None
+    get_user_info_url: str = None
+
+    async def authenticate(self, *, code: str, **kwargs):
+        ...
+
+
+class PasswordAuthenticator(Authenticator):
+    async def authenticate(self, *, email: str, password: str, **kwargs):
         if not email or not password:
             return {}
         user = await executors.user.get_user_by_email(email)
@@ -73,8 +55,9 @@ class Authenticator:
             return user
         return {}
 
-    @classmethod
-    async def authenticate_by_email(cls, email: str, verification_code: str, **_):
+
+class EmailAuthenticator(Authenticator):
+    async def authenticate(self, *, email: str, verification_code: str, **kwargs):
         session_redis = get_session_redis()
         cache_name = CachePrefix.VERIFICATION_CODE_PREFIX + email
         cache_content = await session_redis.get(cache_name)
@@ -85,18 +68,84 @@ class Authenticator:
             return {}
         return await executors.user.get_user_by_email(email)
 
-    @classmethod
-    async def authenticate_by_qq(cls, code: str, **_):
-        pass
+
+class GithubOAuth2Authenticator(OAuth2Authenticator):
+    client_id = settings.SECRETS["GITHUB_OAUTH2"]["client_id"]
+    client_secret = settings.SECRETS["GITHUB_OAUTH2"]["client_secret"]
+    get_access_token_url = 'https://github.com/login/oauth/access_token'
+    get_user_info_url = 'https://api.github.com/user'
+    get_user_email_url = 'https://api.github.com/user/emails'
+
+    async def authenticate(self, *, code: str, **kwargs):
+        params = {
+            'client_id': self.client_id,
+            "client_secret": self.client_secret,
+            'code': code,
+        }
+        headers = {'Accept': 'application/json'}
+        proxy_conf = parse_proxy_url(settings.PROXY_URL)
+        user_executor = executors.user
+        async with AsyncProxyTransport(**proxy_conf) as transport:
+            async with httpx.AsyncClient(transport=transport) as client:
+                response = await client.post(self.get_access_token_url, params=params, headers=headers)
+                json_data = response.json()
+                if "access_token" not in json_data:
+                    return {}
+                access_token = json_data['access_token']
+                headers['Authorization'] = f"token {access_token}"
+                response = await client.get(self.get_user_info_url, headers=headers)
+                github_user = response.json()
+                github_user['id'] = str(github_user['id'])
+                user = await user_executor.get_user_by_github_token(github_user['id'])
+                # 数据库中已经有该用户，直接返回用户信息
+                if user:
+                    return user
+                # 获取新用户的邮箱
+                if not github_user['email']:
+                    response = await client.get(self.get_user_email_url, headers=headers)
+                    emails = response.json()
+                    for email in emails:
+                        if email['primary']:
+                            github_user['email'] = email['email']
+                            break
+                user = await user_executor.get_user_by_email(github_user['email'])
+                # 数据库中已经有当前邮箱对应的用户，更新当前用户的 GitHub Token，然后返回当前用户信息
+                if user:
+                    await user_executor.update_user_github_token(user['user_id'], github_user['id'])
+                    user['github_token'] = github_user['id']
+                    return user
+                # 下载用户头像并上传到 MinIO 服务器
+                response = await client.get(github_user['avatar_url'])
+                file_type = response.headers.get('content-type').split('/')[-1]
+                hole_avatar = upload_avatar(response.content, file_type)
+        # 创建新用户
+        await create_user_and_dynamic(
+            name=github_user['name'],
+            github_token=github_user['id'],
+            email=github_user['email'],
+            profile=github_user['bio'] or '',
+            avatar=hole_avatar,
+        )
+        user = await user_executor.get_user_by_github_token(github_user['id'])
+        return user
+
+
+class QQOAuth2Authenticator(OAuth2Authenticator):
+    pass
+
+
+class AuthenticatorFactory:
+    authenticator_types = {
+        AuthType.EMAIL.value: EmailAuthenticator,
+        AuthType.PASSWORD: PasswordAuthenticator,
+        AuthType.GITHUB.value: GithubOAuth2Authenticator,
+        AuthType.QQ.value: QQOAuth2Authenticator
+    }
 
     @classmethod
-    async def authenticate_by_github(cls, code: str, **_):
-        pass
-
-
-@lru_cache()
-def get_authenticator():
-    return Authenticator()
+    def get_authenticator(cls, auth_type: str) -> Authenticator:
+        authenticator_class = cls.authenticator_types[auth_type]
+        return authenticator_class()
 
 
 async def authenticate(
@@ -108,7 +157,9 @@ async def authenticate(
     verification_code: str = "",
 ) -> dict:
     """用户多方式登录认证函数 """
-    authenticator = get_authenticator()
+    if isinstance(auth_type, AuthType):
+        auth_type = auth_type.value
+    authenticator = AuthenticatorFactory.get_authenticator(auth_type)
     return await authenticator.authenticate(
         email=email,
         password=password,

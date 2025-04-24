@@ -1,5 +1,4 @@
 import re
-import io
 import json
 import asyncio
 import random
@@ -7,7 +6,6 @@ import time
 
 import filetype
 from minio import Minio
-from minio.error import MinioException
 from fastapi import APIRouter, UploadFile, Depends, Body
 from fastapi.requests import Request
 from pydantic import EmailStr
@@ -24,7 +22,7 @@ from utils.user.auth import (
 )
 from utils.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
-from storage.oss import get_minio_client, MAX_AVATAR_SIZE, AVATAR_BUCKET_NAME
+from storage.oss import get_minio_client, MAX_AVATAR_SIZE, upload_avatar
 from storage.mysql import executors, create_user_and_dynamic
 from storage.cache import get_session_redis, Redis, CachePrefix, update_session_version
 from mq.broker import send_email_task
@@ -129,19 +127,10 @@ async def upload_user_avatar(
         return SmartOJResponse(ResponseCodes.FILE_TOO_LARGE)
 
     file_type = avatar.filename.rsplit(".", 1)[-1]
-    object_name = f"{user['user_id']}.{file_type}"
 
-    try:
-        minio_client.put_object(
-            AVATAR_BUCKET_NAME,
-            object_name,
-            io.BytesIO(content),
-            len(content),
-        )
-    except MinioException:
+    hole_avatar = upload_avatar(content, file_type, minio_client)
+    if not hole_avatar:
         return SmartOJResponse(ResponseCodes.FILE_UPLOAD_ERROR)
-
-    hole_avatar = f"/{AVATAR_BUCKET_NAME}/{object_name}"
 
     async def update_db():
         """更新数据库"""

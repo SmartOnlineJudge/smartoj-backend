@@ -1,5 +1,6 @@
 import json
 
+
 # 是否是开发环境
 DEV_ENV: bool = True
 
@@ -32,3 +33,7 @@ SMTP_CONF: dict = METADATA["smtp"]
 
 # 默认用户头像，这个是在 MinIO 服务器上的头像路径
 DEFAULT_USER_AVATAR: str = "/user-avatars/default.webp"
+
+# 请求代理地址
+# 后端向 GitHub 发送请求的时候会用到
+PROXY_URL = "socks5://127.0.0.1:1080"

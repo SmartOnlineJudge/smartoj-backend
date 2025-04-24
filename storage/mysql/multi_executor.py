@@ -1,4 +1,3 @@
-import json
 import time
 
 import aiomysql
@@ -99,59 +98,31 @@ class UserExecutor(MySQLExecutor):
             return [], 0
         return users, total["count(*)"]
 
-    async def update_user_is_delete(
-            self,
-            user_id: str,
-            is_deleted: bool,
-    ):
+    async def _update_user(self, user_id: str, field: str, value: str | int | bool):
         async with self.connection() as connection:
             async with connection.cursor() as cursor:
-                sql = """
+                sql = f"""
                     UPDATE user
-                    SET is_deleted = %s
+                    SET {field} = %s
                     WHERE user_id = %s
                 """
                 try:
-                    await cursor.execute(sql, (is_deleted, user_id))
+                    await cursor.execute(sql, (value, user_id))
                     await connection.commit()
                 except aiomysql.MySQLError:
                     await connection.rollback()
 
-    async def update_user_password(
-            self,
-            user_id: str,
-            password: str,
-    ):
-        async with self.connection() as connection:
-            async with connection.cursor() as cursor:
-                sql = """
-                    UPDATE user
-                    SET password = %s
-                    WHERE user_id = %s
-                """
-                try:
-                    await cursor.execute(sql, (password_hash(password, settings.SECRETS["PASSWORD"]), user_id))
-                    await connection.commit()
-                except aiomysql.MySQLError:
-                    await connection.rollback()
+    async def update_user_is_delete(self, user_id: str, is_deleted: bool):
+        await self._update_user(user_id, "is_deleted", is_deleted)
 
-    async def update_user_email(
-            self,
-            user_id: str,
-            email: str,
-    ):
-        async with self.connection() as connection:
-            async with connection.cursor() as cursor:
-                sql = """
-                    UPDATE user
-                    SET email = %s
-                    WHERE user_id = %s
-                """
-                try:
-                    await cursor.execute(sql, (email, user_id))
-                    await connection.commit()
-                except aiomysql.MySQLError:
-                    await connection.rollback()
+    async def update_user_password(self, user_id: str, password: str):
+        await self._update_user(user_id, "password", password_hash(password, settings.SECRETS["PASSWORD"]))
+
+    async def update_user_email(self,user_id: str,email: str):
+        await self._update_user(user_id, "email", email)
+
+    async def update_user_github_token(self, user_id: str, github_token: str):
+        await self._update_user(user_id, "github_token", github_token)
 
 
 class UserDynamicExecutor(MySQLExecutor):

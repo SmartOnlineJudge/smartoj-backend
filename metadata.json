@@ -32,7 +32,11 @@
       }
     },
     "secrets": {
-      "PASSWORD": "your_secret"
+      "PASSWORD": "your_secret",
+      "GITHUB_OAUTH2": {
+        "client_id": "your client id",
+        "client_secret": "your client secret"
+      }
     },
     "minio": {
       "access_key": "your_access_key",
