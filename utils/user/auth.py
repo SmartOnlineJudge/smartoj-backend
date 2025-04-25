@@ -137,7 +137,7 @@ class QQOAuth2Authenticator(OAuth2Authenticator):
 class AuthenticatorFactory:
     authenticator_types = {
         AuthType.EMAIL.value: EmailAuthenticator,
-        AuthType.PASSWORD: PasswordAuthenticator,
+        AuthType.PASSWORD.value: PasswordAuthenticator,
         AuthType.GITHUB.value: GithubOAuth2Authenticator,
         AuthType.QQ.value: QQOAuth2Authenticator
     }

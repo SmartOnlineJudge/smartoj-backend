@@ -10,12 +10,7 @@ from .models import Question
 router = APIRouter()
 
 
-@router.get('/index')
-def index():
-    return {'msg': 'hello'}
-
-
-@router.post("/question", summary="题目信息增加")
+@router.post("", summary="题目信息增加")
 async def get_question_info(
         user: dict = Depends(get_current_user),
         question_info: Question = Body()
