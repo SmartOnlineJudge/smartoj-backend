@@ -238,7 +238,7 @@ async def update_user_down(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.get("/question", summary="题目信息查询")
+@router.get("/questions", summary="题目信息查询")
 async def get_question_info(
         _: dict = Depends(get_current_admin),
         page: int = Query(1, ge=1),

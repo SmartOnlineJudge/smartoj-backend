@@ -75,6 +75,19 @@ class UserExecutor(MySQLExecutor):
         """根据 github_token 获取用户"""
         return await self._get_user('github_token', github_token)
 
+    async def get_id_by_user_id(self, user_id: str) -> int:
+        """根据 user_id 获取 id"""
+        cursor = await self.cursor()
+        sql = f"""
+            select id from user where user_id = %s
+        """
+        try:
+            await cursor.execute(sql, user_id)
+            uid = await cursor.fetchone()
+        except aiomysql.MySQLError:
+            return -1
+        return uid
+
     async def get_page_user_data(self, page: int, size: int) -> tuple[list, int]:
         """分页展示用户信息"""
         cursor = await self.cursor()
@@ -224,6 +237,21 @@ class QuestionExecutor(MySQLExecutor):
 
         return questions, total["count(*)"]
 
+    async def question_add(self, title: str, description: str, difficulty: int, publisher_id: int):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                sql = """
+                     insert into question (title, description, difficulty, publisher_id)
+                     values (%s, %s, %s, %s)
+                 """
+                try:
+                    await cursor.execute(sql, (title, description, difficulty, publisher_id))
+                    await connection.commit()
+                    insert_id = cursor.lastrowid
+                    return insert_id
+                except aiomysql.MySQLError:
+                    await connection.rollback()
+
 
 class TagExecutor(MySQLExecutor):
     async def get_tags_by_qid(self, q_ids: list[int]) -> list:
@@ -244,6 +272,20 @@ class TagExecutor(MySQLExecutor):
         except aiomysql.MySQLError:
             return []
         return tags
+
+    async def add_tags_by_qid(self, q_id, t_ids: list):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                sql = """
+                     insert into question_tag (question_id, tag_id)
+                     values (%s, %s)
+                 """
+                try:
+                    values = [(q_id, t_id) for t_id in t_ids]
+                    await cursor.executemany(sql, values)
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                    await connection.rollback()
 
 
 class QuestionTagExecutor(MySQLExecutor):
@@ -299,6 +341,20 @@ class SolvingFrameworkExecutor(MySQLExecutor):
             return []
         return solving_framework
 
+    async def add_solving_frameworks_by_qid(self, q_id: int, framework_datas: list):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                values = [(data.code_framework, data.language_id, q_id) for data in framework_datas]
+                sql = """
+                         insert into solving_framework (code_framework, language_id,question_id)
+                         values (%s, %s, %s)
+                     """
+                try:
+                    await cursor.executemany(sql, values)
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                    await connection.rollback()
+
 
 class TestExecutor(MySQLExecutor):
     async def get_tests_by_qid(self, q_ids: list[int]) -> list:
@@ -317,6 +373,20 @@ class TestExecutor(MySQLExecutor):
         except aiomysql.MySQLError:
             return []
         return test
+
+    async def add_test_by_qid(self, q_id: int, input_output: list):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                sql = """
+                    INSERT INTO test (input_output, question_id)
+                    VALUES (%s, %s)
+                """
+                try:
+                    values = [(io, q_id) for io in input_output]
+                    await cursor.executemany(sql, values)
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                    await connection.rollback()
 
 
 class JudgeTemplateExecutor(MySQLExecutor):
@@ -337,6 +407,20 @@ class JudgeTemplateExecutor(MySQLExecutor):
             return []
         return solving_framework
 
+    async def add_judge_templates_by_qid(self, q_id: int, template_datas: list):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                values = [(data.code, data.language_id, q_id) for data in template_datas]
+                sql = """
+                         insert into judge_template (code, language_id,question_id)
+                         values (%s, %s, %s)
+                     """
+                try:
+                    await cursor.executemany(sql, values)
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                    await connection.rollback()
+
 
 class MemoryTimeLimitExecutor(MySQLExecutor):
     async def get_memory_limits_by_qid(self, q_ids: list[int]) -> list:
@@ -355,6 +439,20 @@ class MemoryTimeLimitExecutor(MySQLExecutor):
         except aiomysql.MySQLError:
             return []
         return memory_limit
+
+    async def add_memory_time_limit_by_qid(self, q_id: int, limit_datas: list):
+        async with self.connection() as connection:
+            async with connection.cursor() as cursor:
+                values = [(data.time_limit, data.memory_limit, data.language_id, q_id) for data in limit_datas]
+                sql = """
+                         insert into memory_time_limit (time_limit, memory_limit,language_id,question_id)
+                         values (%s, %s, %s, %s)
+                     """
+                try:
+                    await cursor.executemany(sql, values)
+                    await connection.commit()
+                except aiomysql.MySQLError:
+                    await connection.rollback()
 
 
 class SolvedHistoryExecutor(MySQLExecutor):
