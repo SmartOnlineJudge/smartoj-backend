@@ -3,6 +3,10 @@ from typing import AsyncGenerator, Any
 from contextlib import asynccontextmanager
 
 import aiomysql
+from sqlalchemy.ext.asyncio import (
+    create_async_engine as _create_async_engine,
+    AsyncEngine
+)
 
 import settings
 
@@ -80,3 +84,17 @@ class MySQLExecutor:
         if self._pool is not None:
             self._pool.close()
             await self._pool.wait_closed()
+
+
+def create_async_engine(url: str = None, **kwargs) -> AsyncEngine:
+    if url is None:
+        _MYSQL_CONF = settings.MYSQL_CONF
+        _user = _MYSQL_CONF["USER"]
+        _password = _MYSQL_CONF["PASSWORD"]
+        _host = _MYSQL_CONF["HOST"]
+        _port = _MYSQL_CONF["PORT"]
+        _database = _MYSQL_CONF["NAME"]
+        url = f"mysql+aiomysql://{_user}:{_password}@{_host}:{_port}/{_database}"
+    if "echo" not in kwargs:
+        kwargs["echo"] = settings.DEV_ENV
+    return _create_async_engine(url, **kwargs)

@@ -1,6 +1,16 @@
 from .executors import MySQLExecutors
+from .base import create_async_engine
+
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 
 executors = MySQLExecutors()
+engine = create_async_engine()
+
+
+async def get_async_session():
+    async with AsyncSession(engine) as session:
+        yield session
 
 
 async def create_user_and_dynamic(

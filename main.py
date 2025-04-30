@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from routes import user_router, question_router, management_router
-from storage.mysql import executors
+from storage.mysql import executors, engine
 from storage.cache import close_cache_connections
 from mq.broker import broker
 from utils.openapi.docs import custom_swagger_ui_html
@@ -17,6 +17,8 @@ async def lifespan(_: FastAPI):
     await executors.destroy()  # 销毁数据库连接
     await broker.shutdown()  # 关闭消息队列服务
     await close_cache_connections()  # 关闭所有缓存连接池
+    # SQLModel ORM
+    await engine.dispose()  # 销毁数据库连接池
 
 
 app = FastAPI(title='智能算法刷题平台-后端 API 文档', docs_url=None, lifespan=lifespan)
