@@ -3,6 +3,7 @@ import asyncio
 
 from fastapi import APIRouter, Depends, Body, Query
 from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 
 import settings
 from ..user.models import LoginModel, UserListModel
@@ -40,7 +41,8 @@ async def admin_login(request: Request, form: LoginModel):
     if not user["is_superuser"]:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     session_id = await login(request, user)
-    response = SmartOJResponse(ResponseCodes.LOGIN_SUCCESS)
+    response_data = SmartOJResponse(ResponseCodes.LOGIN_SUCCESS)
+    response = JSONResponse(response_data.model_dump())
     response.set_cookie(
         key="session_id",
         value=session_id,

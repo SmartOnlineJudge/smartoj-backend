@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 
 class ResponseCodes:
@@ -21,9 +21,15 @@ class ResponseCodes:
     EMAIL_ALREADY_EXISTS = (410, "当前邮箱已被注册")
 
 
-class SmartOJResponse(JSONResponse):
-    def __init__(
-            self, message_tuple: tuple[int, str], data: Any = None, *args, **kwargs
-    ):
-        content = {"code": message_tuple[0], "message": message_tuple[1], "data": data}
-        super().__init__(content=content, *args, **kwargs)
+class SmartOJResponse(BaseModel):
+    code: int
+    message: str
+    data: Any
+
+    def __init__(self, message_tuple: tuple[int, str], *, data: Any = None):
+        response_data = {
+            "code": message_tuple[0],
+            "message": message_tuple[1],
+            "data": data,
+        }
+        super().__init__(**response_data)

@@ -8,6 +8,7 @@ import filetype
 from minio import Minio
 from fastapi import APIRouter, UploadFile, Depends, Body
 from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 from pydantic import EmailStr
 
 import settings
@@ -73,7 +74,8 @@ async def user_login(request: Request, model: LoginModel):
     if not user:
         return SmartOJResponse(ResponseCodes.LOGIN_FAILED)
     session_id = await login(request, user)
-    response = SmartOJResponse(ResponseCodes.LOGIN_SUCCESS)
+    response_data = SmartOJResponse(ResponseCodes.LOGIN_SUCCESS)
+    response = JSONResponse(response_data.model_dump())
     response.set_cookie(
         key="session_id",
         value=session_id,
@@ -86,7 +88,8 @@ async def user_login(request: Request, model: LoginModel):
 @router.post("/logout", summary="用户退出登录")
 async def user_logout(request: Request):
     await logout(request)
-    response = SmartOJResponse(ResponseCodes.OK)
+    response_data = SmartOJResponse(ResponseCodes.OK)
+    response = JSONResponse(response_data.model_dump())
     response.delete_cookie("session_id", httponly=True)
     return response
 
@@ -247,9 +250,8 @@ async def update_password(
         session_redis=session_redis,
         email=user["email"]
     )
-    response_data = json.loads(response.body)
 
-    if response_data["code"] != 200:
+    if response.code != 200:
         return response
 
     async def update_db():
@@ -288,8 +290,7 @@ async def update_email(
         session_redis=session_redis,
         email=str(new_email)
     )
-    response_data = json.loads(response.body)
-    if response_data["code"] != 200:
+    if response.code != 200:
         return response
 
     async def update_db():
