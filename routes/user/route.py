@@ -43,6 +43,19 @@ async def user_register(
         model: RegisterModel,
         session_redis: Redis = Depends(get_session_redis)
 ):
+    """
+    ## 参数列表说明:
+    **name**: 新用户名字；必须；表单 </br>
+    **password1**: 密码1；必须；表单 </br>
+    **password2**: 密码2；必须；表单 </br>
+    **email**: 新用户邮箱；必须；表单 </br>
+    **verification_code**: 邮箱验证码；必须；表单
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **250**: 验证码输入错误或已过期 </br>
+    **400**: 两次密码输入不一致 </br>
+    **410**: 当前邮箱已被注册
+    """
     if model.password1 != model.password2:
         return SmartOJResponse(ResponseCodes.TWICE_PASSWORD_NOT_MATCH)
     email = str(model.email)
@@ -56,8 +69,7 @@ async def user_register(
         email,
         session_redis,
     )
-    response_data = json.loads(response.body)
-    if response_data["code"] != 200:
+    if response.code != 200:
         return response
     # 创建用户
     await create_user_and_dynamic(
@@ -70,6 +82,17 @@ async def user_register(
 
 @router.post("/login", summary="用户登录")
 async def user_login(request: Request, model: LoginModel):
+    """
+    ## 参数列表说明:
+    **email**: 邮箱；验证码登录和邮箱登录时必须；表单 </br>
+    **password**: 密码；密码登录时必须；表单 </br>
+    **code**: 第三方平台授权后的代码；使用 OAuth2 登录时必须；表单 </br>
+    **verification_code**: 邮箱验证码；验证码登录时必须；表单 </br>
+    **auth_type**: 登录的类型（password、github、qq、email）；必须；表单
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **305**: 登录失败
+    """
     user = await authenticate(**model.model_dump())
     if not user:
         return SmartOJResponse(ResponseCodes.LOGIN_FAILED)

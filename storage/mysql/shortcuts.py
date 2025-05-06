@@ -5,7 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 
 executors = MySQLExecutors()
-engine = create_async_engine()
+engine = create_async_engine(pool_recycle=60)
 
 
 async def get_async_session():

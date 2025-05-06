@@ -2,9 +2,9 @@ from enum import Enum
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import EmailStr, Field
 
-from utils.models import DatetimeModel
+from utils.models import SmartOJSQLModel
 
 
 class AuthType(Enum):
@@ -14,7 +14,7 @@ class AuthType(Enum):
     PASSWORD = "password"
 
 
-class LoginModel(BaseModel):
+class LoginModel(SmartOJSQLModel):
     email: Optional[EmailStr] = ""
     password: Optional[str] = ""
     code: Optional[str] = ""  # 第三方平台认证完毕后传递给前端的参数
@@ -22,7 +22,7 @@ class LoginModel(BaseModel):
     auth_type: AuthType
 
 
-class UserOutModel(DatetimeModel):
+class UserOutModel(SmartOJSQLModel):
     user_id: str
     name: str
     email: str
@@ -41,7 +41,7 @@ class UserListModel(UserOutModel):
     id: int
 
 
-class RegisterModel(BaseModel):
+class RegisterModel(SmartOJSQLModel):
     name: str
     password1: str
     password2: str
