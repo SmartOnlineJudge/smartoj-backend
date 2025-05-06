@@ -1,2 +1,1 @@
-from .base import *
-from .sqlmodels import *
+from .base import SmartOJSQLModel

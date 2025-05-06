@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine as _create_async_engine,
     AsyncEngine
 )
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 import settings
 
@@ -84,6 +85,11 @@ class MySQLExecutor:
         if self._pool is not None:
             self._pool.close()
             await self._pool.wait_closed()
+
+
+class MySQLService:
+    def __init__(self, session: AsyncSession):
+        self.session = session
 
 
 def create_async_engine(url: str = None, **kwargs) -> AsyncEngine:
