@@ -18,7 +18,7 @@ from storage.cache import get_session_redis, CachePrefix
 from storage.oss import upload_avatar
 from routes.user.models import UserOutModel, AuthType
 from .security import password_hash
-from utils.tools import parse_proxy_url
+from utils.generic import parse_proxy_url
 
 
 SESSION_PREFIX = CachePrefix.SESSION_PREFIX

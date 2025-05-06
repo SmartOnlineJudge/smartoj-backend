@@ -33,6 +33,6 @@ def custom_swagger_ui_html_endpoint():
     )
 
 
-app.include_router(user_router, prefix="/user", tags=["用户"])
-app.include_router(question_router, prefix="/question", tags=["题目"])
-app.include_router(management_router, prefix="/management", tags=["后台管理"])
+app.include_router(user_router, prefix="/user", tags=["用户模块相关接口"])
+app.include_router(question_router, prefix="/question", tags=["题目模块相关接口"])
+app.include_router(management_router, prefix="/management", tags=["后台管理系统相关接口"])

@@ -1,18 +1,22 @@
 import json
 import asyncio
 
-from fastapi import APIRouter, Depends, Body, Query
+from fastapi import APIRouter, Body, Query
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
 import settings
 from ..user.models import LoginModel, UserListModel
 from ..user.route import user_logout
-from utils.user.auth import authenticate, login, get_current_admin, USER_PREFIX, SESSION_PREFIX
-from utils.user.security import mask
+from core.user.auth import authenticate, login, USER_PREFIX, SESSION_PREFIX
+from core.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
-from storage.cache import get_session_redis, Redis
+from utils.dependencies import (
+    CurrentAdminDependency,
+    SessionRedisDependency
+)
 from storage.mysql import executors
+
 
 router = APIRouter()
 
@@ -58,16 +62,16 @@ async def admin_logout(request: Request):
 
 
 @router.get("/user", summary="获取当前管理员信息")
-async def get_admin_user(admin: dict = Depends(get_current_admin)):
+async def get_admin_user(admin: CurrentAdminDependency):
     return SmartOJResponse(ResponseCodes.OK, data=mask(admin))
 
 
 @router.put("/user", summary="修改管理员信息")
 async def update_admin_user(
+        admin: CurrentAdminDependency,
+        session_redis: SessionRedisDependency,
         name: str = Body(max_length=20),
         profile: str = Body(max_length=255),
-        admin: dict = Depends(get_current_admin),
-        session_redis: Redis = Depends(get_session_redis),
 ):
     """
     ## 参数列表说明:
@@ -102,7 +106,7 @@ async def update_admin_user(
 
 @router.get("/users", summary="分页获取用户信息")
 async def get_user_data(
-        _: dict = Depends(get_current_admin),
+        _: CurrentAdminDependency,
         page: int = Query(1, ge=1),
         size: int = Query(5, ge=1)
 ):
@@ -125,10 +129,10 @@ async def get_user_data(
 
 @router.get("/user/status", summary="分页获取用户登录状态信息")
 async def get_user_status(
-        _: dict = Depends(get_current_admin),
+        _: CurrentAdminDependency,
+        session_redis: SessionRedisDependency,
         page: int = Query(1, ge=1),
         size: int = Query(5, ge=1),
-        session_redis: Redis = Depends(get_session_redis)
 ):
     """
     ## 参数列表说明:
@@ -184,10 +188,10 @@ async def get_user_status(
 
 @router.patch("/user", summary="禁用用户")
 async def update_user_deleted(
-        admin: dict = Depends(get_current_admin),
+        admin: CurrentAdminDependency,
+        session_redis: SessionRedisDependency,
         user_id: str = Body(max_length=13),
         is_deleted: bool = Body(),
-        session_redis: Redis = Depends(get_session_redis),
 ):
     """
     ## 参数列表说明:
@@ -225,9 +229,9 @@ async def update_user_deleted(
 
 @router.delete("/user", summary="强制用户下线")
 async def update_user_down(
-        _admin: dict = Depends(get_current_admin),
+        _: CurrentAdminDependency,
+        session_redis: SessionRedisDependency,
         session_id: str = Body(max_length=32, embed=True),
-        session_redis: Redis = Depends(get_session_redis),
 ):
     """
     ## 参数列表说明:
@@ -242,7 +246,7 @@ async def update_user_down(
 
 @router.get("/questions", summary="题目信息查询")
 async def get_question_info(
-        _: dict = Depends(get_current_admin),
+        _: CurrentAdminDependency,
         page: int = Query(1, ge=1),
         size: int = Query(5, ge=1),
 ):
@@ -277,9 +281,9 @@ async def get_question_info(
     for question in questions:
         qid = question["id"]
         pid = question["publisher_id"]
-        publisher = [{"id": publisher["id"], "name": publisher["name"]}
+        publisher = [{"id": publisher["user_id"], "name": publisher["name"]}
                      for publisher in publishers
-                     if publisher["id"] == pid]
+                     if publisher["user_id"] == pid]
         del question['publisher_id']
         result = {
             **question,

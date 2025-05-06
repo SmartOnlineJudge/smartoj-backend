@@ -2,7 +2,7 @@ from taskiq_redis import RedisAsyncResultBackend
 from taskiq_aio_pika import AioPikaBroker
 
 import settings
-from utils.mail import send_email
+from core.mail import send_email
 
 
 _mq_conf = settings.REDIS_CONF["mq"]

@@ -1,21 +1,21 @@
 from enum import Enum
 from typing import List
 
-from pydantic import BaseModel
+from utils.models import SmartOJSQLModel
 
 
-class LimitDataCreate(BaseModel):
+class LimitDataCreate(SmartOJSQLModel):
     time_limit: int
     memory_limit: float
     language_id: int
 
 
-class FrameworkDataCreate(BaseModel):
+class FrameworkDataCreate(SmartOJSQLModel):
     code_framework: str
     language_id: int
 
 
-class JudgeTemplateCreate(BaseModel):
+class JudgeTemplateCreate(SmartOJSQLModel):
     code: str
     language_id: int
 
@@ -26,7 +26,7 @@ class Difficulty(str, Enum):
     hard = "hard"
 
 
-class QuestionCreate(BaseModel):
+class QuestionCreate(SmartOJSQLModel):
     title: str
     description: str
     difficulty: Difficulty
@@ -37,29 +37,29 @@ class QuestionCreate(BaseModel):
     judge_templates: List[JudgeTemplateCreate]
 
 
-class QuestionUpdate(BaseModel):
+class QuestionUpdate(SmartOJSQLModel):
     id: int
     title: str
     description: str
     difficulty: Difficulty
 
 
-class JudgeTemplateUpdate(BaseModel):
+class JudgeTemplateUpdate(SmartOJSQLModel):
     id: int
     code: str
 
 
-class LimitDataUpdate(BaseModel):
+class LimitDataUpdate(SmartOJSQLModel):
     id: int
     time_limit: int
     memory_limit: float
 
 
-class FrameworkDataUpdate(BaseModel):
+class FrameworkDataUpdate(SmartOJSQLModel):
     id: int
     code_framework: str
 
 
-class TestUpdate(BaseModel):
+class TestUpdate(SmartOJSQLModel):
     id: int
     input_output: str

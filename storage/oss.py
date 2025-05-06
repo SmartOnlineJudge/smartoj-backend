@@ -5,7 +5,7 @@ from minio import Minio
 from minio.error import MinioException
 
 import settings
-from utils.tools import random_avatar_name
+from utils.generic import random_avatar_name
 
 
 MINIO_CONF = settings.MINIO_CONF

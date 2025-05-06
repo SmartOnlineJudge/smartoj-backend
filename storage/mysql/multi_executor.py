@@ -1,7 +1,7 @@
 import time
 
 import settings
-from utils.user.security import password_hash, generate_user_id
+from core.user.security import password_hash, generate_user_id
 from .base import MySQLExecutor
 
 

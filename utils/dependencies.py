@@ -1,9 +1,12 @@
+"""
+收集项目所有依赖项
+"""
 from typing import Annotated
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import Depends
 
-from utils.user.auth import get_current_user, get_current_admin
+from core.user.auth import get_current_user, get_current_admin
 from utils.service_registry import (
     get_tag_service,
     get_question_service,

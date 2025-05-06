@@ -5,15 +5,14 @@ import random
 import time
 
 import filetype
-from minio import Minio
-from fastapi import APIRouter, UploadFile, Depends, Body
+from fastapi import APIRouter, UploadFile, Body
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
 
 import settings
 from .models import LoginModel, RegisterModel
-from utils.user.auth import (
+from core.user.auth import (
     logout,
     get_current_user,
     USER_PREFIX,
@@ -21,11 +20,16 @@ from utils.user.auth import (
     authenticate,
     login
 )
-from utils.user.security import mask
+from core.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
-from storage.oss import get_minio_client, MAX_AVATAR_SIZE, upload_avatar
+from utils.dependencies import (
+    CurrentUserDependency,
+    SessionRedisDependency,
+    MinioClientDependency
+)
+from storage.oss import MAX_AVATAR_SIZE, upload_avatar
 from storage.mysql import executors, create_user_and_dynamic
-from storage.cache import get_session_redis, Redis, CachePrefix, update_session_version
+from storage.cache import CachePrefix, update_session_version
 from mq.broker import send_email_task
 
 router = APIRouter()
@@ -33,7 +37,7 @@ VERIFICATION_CODE_PREFIX = CachePrefix.VERIFICATION_CODE_PREFIX
 
 
 @router.get("", summary="获取当前用户信息")
-def get_user(user: dict = Depends(get_current_user)):
+def get_user(user: CurrentUserDependency):
     return SmartOJResponse(ResponseCodes.OK, data=mask(user))
 
 
@@ -41,7 +45,7 @@ def get_user(user: dict = Depends(get_current_user)):
 async def user_register(
         request: Request,
         model: RegisterModel,
-        session_redis: Redis = Depends(get_session_redis)
+        session_redis: SessionRedisDependency
 ):
     """
     ## 参数列表说明:
@@ -120,9 +124,9 @@ async def user_logout(request: Request):
 @router.post("/avatar", summary="用户上传头像")
 async def upload_user_avatar(
         avatar: UploadFile,
-        user: dict = Depends(get_current_user),
-        minio_client: Minio = Depends(get_minio_client),
-        session_redis: Redis = Depends(get_session_redis)
+        user: CurrentUserDependency,
+        minio_client: MinioClientDependency,
+        session_redis: SessionRedisDependency
 ):
     """
     ## 参数列表说明:
@@ -182,8 +186,8 @@ async def upload_user_avatar(
 @router.post("/verification-code", summary="发送验证码")
 async def send_verification_code(
         request: Request,
-        recipient: str = Body("", embed=True),
-        session_redis: Redis = Depends(get_session_redis)
+        session_redis: SessionRedisDependency,
+        recipient: str = Body("", embed=True)
 ):
     """
     ## 参数列表说明:
@@ -225,9 +229,9 @@ async def send_verification_code(
 @router.post("/check-verification-code", summary="校验验证码是否正确")
 async def check_verification_code(
         request: Request,
+        session_redis: SessionRedisDependency,
         vfcode: str = Body(pattern=r"^[0-9]{6}$"),
-        email: str = Body(""),
-        session_redis: Redis = Depends(get_session_redis)
+        email: str = Body("")
 ):
     """
     ## 参数列表说明:
@@ -254,10 +258,10 @@ async def check_verification_code(
 @router.patch("/password", summary="用户修改密码")
 async def update_password(
         request: Request,
+        session_redis: SessionRedisDependency,
+        user: CurrentUserDependency,
         vfcode: str = Body(pattern=r"^[0-9]{6}$"),
-        new_password: str = Body(max_length=32),
-        session_redis: Redis = Depends(get_session_redis),
-        user: dict = Depends(get_current_user)
+        new_password: str = Body(max_length=32)
 ):
     """
     ## 参数列表说明:
@@ -294,10 +298,10 @@ async def update_password(
 @router.patch("/email", summary="用户修改邮箱")
 async def update_email(
         request: Request,
+        user: CurrentUserDependency,
+        session_redis: SessionRedisDependency,
         vfcode: str = Body(pattern=r"^[0-9]{6}$"),
-        user: dict = Depends(get_current_user),
-        new_email: EmailStr = Body("test@smartoj.com"),
-        session_redis: Redis = Depends(get_session_redis),
+        new_email: EmailStr = Body("test@smartoj.com")
 ):
     """
     ## 参数列表说明:

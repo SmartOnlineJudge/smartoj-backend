@@ -1,19 +1,26 @@
 import asyncio
 
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Body
 
 from storage.mysql import executors
 from utils.responses import SmartOJResponse, ResponseCodes
-from utils.user.auth import get_current_user
-from .models import QuestionCreate, QuestionUpdate, JudgeTemplateUpdate, LimitDataUpdate, FrameworkDataUpdate, \
+from utils.dependencies import CurrentUserDependency
+from .models import (
+    QuestionCreate,
+    QuestionUpdate,
+    JudgeTemplateUpdate,
+    LimitDataUpdate,
+    FrameworkDataUpdate,
     TestUpdate
+)
+
 
 router = APIRouter()
 
 
 @router.post("", summary="题目信息增加")
 async def get_question_info(
-        user: dict = Depends(get_current_user),
+        user: CurrentUserDependency,
         question_info: QuestionCreate = Body()
 ):
     """
@@ -54,8 +61,8 @@ async def permission_detection(question_id: int, user: dict):
 
 @router.put("", summary="题目信息修改")
 async def question_update(
-        user: dict = Depends(get_current_user),
-        question_data: QuestionUpdate = Body(),
+        user: CurrentUserDependency,
+        question_data: QuestionUpdate = Body()
 ):
     """
     ## 参数列表说明:
@@ -76,10 +83,10 @@ async def question_update(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/judge_template", summary="判题模板信息修改")
+@router.put("/judge-template", summary="判题模板信息修改")
 async def update_judge_template(
-        judge_template_data: JudgeTemplateUpdate = Body(),
-        user: dict = Depends(get_current_user),
+        user: CurrentUserDependency,
+        judge_template_data: JudgeTemplateUpdate = Body()
 ):
     """
     ## 参数列表说明:
@@ -102,10 +109,10 @@ async def update_judge_template(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/memory_time_limit", summary="内存时间限制信息修改")
+@router.put("/memory-time-limit", summary="内存时间限制信息修改")
 async def update_memory_time_limit(
-        memory_time_limit_data: LimitDataUpdate = Body(),
-        user: dict = Depends(get_current_user),
+        user: CurrentUserDependency,
+        memory_time_limit_data: LimitDataUpdate = Body()
 ):
     """
     ## 参数列表说明:
@@ -129,10 +136,10 @@ async def update_memory_time_limit(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/solving_framework", summary="解题框架信息修改")
+@router.put("/solving-framework", summary="解题框架信息修改")
 async def update_solving_framework(
-        solving_framework_data: FrameworkDataUpdate = Body(),
-        user: dict = Depends(get_current_user),
+        user: CurrentUserDependency,
+        solving_framework_data: FrameworkDataUpdate = Body()
 ):
     """
     ## 参数列表说明:
@@ -157,8 +164,8 @@ async def update_solving_framework(
 
 @router.put("/test", summary="测试案例信息修改")
 async def update_test(
-        test: TestUpdate = Body(),
-        user: dict = Depends(get_current_user),
+        user: CurrentUserDependency,
+        test: TestUpdate = Body()
 ):
     """
     ## 参数列表说明:
@@ -182,7 +189,7 @@ async def update_test(
 
 @router.delete("", summary="题目信息删除")
 async def question_delete(
-        user: dict = Depends(get_current_user),
+        user: CurrentUserDependency,
         question_id: int = Body(embed=True),
 ):
     """
@@ -202,11 +209,10 @@ async def question_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/judge_template", summary="判题模板信息删除")
+@router.delete("/judge-template", summary="判题模板信息删除")
 async def judge_template_delete(
-        judge_template_id: int = Body(embed=True),
-        user: dict = Depends(get_current_user),
-
+        user: CurrentUserDependency,
+        judge_template_id: int = Body(embed=True)
 ):
     """
     ## 参数列表说明:
@@ -228,11 +234,10 @@ async def judge_template_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/solving_framework", summary="解题框架信息删除")
+@router.delete("/solving-framework", summary="解题框架信息删除")
 async def solving_framework_delete(
-        solving_framework_id: int = Body(embed=True),
-        user: dict = Depends(get_current_user),
-
+        user: CurrentUserDependency,
+        solving_framework_id: int = Body(embed=True)
 ):
     """
     ## 参数列表说明:
@@ -256,9 +261,8 @@ async def solving_framework_delete(
 
 @router.delete("/test", summary="测试用例删除")
 async def test_delete(
-        test_id: int = Body(embed=True),
-        user: dict = Depends(get_current_user),
-
+        user: CurrentUserDependency,
+        test_id: int = Body(embed=True)
 ):
     """
     ## 参数列表说明:
@@ -280,11 +284,10 @@ async def test_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/memory_time_limit", summary="内存时间限制删除")
+@router.delete("/memory-time-limit", summary="内存时间限制删除")
 async def memory_time_limit_delete(
-        memory_limits_id: int = Body(embed=True),
-        user: dict = Depends(get_current_user),
-
+        user: CurrentUserDependency,
+        memory_limits_id: int = Body(embed=True)
 ):
     """
     ## 参数列表说明:
