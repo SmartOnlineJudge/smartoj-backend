@@ -4,18 +4,18 @@ from typing import List
 from pydantic import BaseModel
 
 
-class LimitData(BaseModel):
+class LimitDataCreate(BaseModel):
     time_limit: int
     memory_limit: float
     language_id: int
 
 
-class FrameworkData(BaseModel):
+class FrameworkDataCreate(BaseModel):
     code_framework: str
     language_id: int
 
 
-class JudgeTemplate(BaseModel):
+class JudgeTemplateCreate(BaseModel):
     code: str
     language_id: int
 
@@ -26,12 +26,40 @@ class Difficulty(str, Enum):
     hard = "hard"
 
 
-class Question(BaseModel):
+class QuestionCreate(BaseModel):
     title: str
     description: str
     difficulty: Difficulty
     tags_ids: list[int]
     input_outputs: list[str]
-    limit_datas: List[LimitData]
-    framework_datas: List[FrameworkData]
-    judge_templates: List[JudgeTemplate]
+    limit_datas: List[LimitDataCreate]
+    framework_datas: List[FrameworkDataCreate]
+    judge_templates: List[JudgeTemplateCreate]
+
+
+class QuestionUpdate(BaseModel):
+    id: int
+    title: str
+    description: str
+    difficulty: Difficulty
+
+
+class JudgeTemplateUpdate(BaseModel):
+    id: int
+    code: str
+
+
+class LimitDataUpdate(BaseModel):
+    id: int
+    time_limit: int
+    memory_limit: float
+
+
+class FrameworkDataUpdate(BaseModel):
+    id: int
+    code_framework: str
+
+
+class TestUpdate(BaseModel):
+    id: int
+    input_output: str

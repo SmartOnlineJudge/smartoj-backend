@@ -81,7 +81,7 @@ class UserExecutor(MySQLExecutor):
     async def update_user_password(self, user_id: str, password: str):
         await self._update_user(user_id, "password", password_hash(password, settings.SECRETS["PASSWORD"]))
 
-    async def update_user_email(self,user_id: str,email: str):
+    async def update_user_email(self, user_id: str, email: str):
         await self._update_user(user_id, "email", email)
 
     async def update_user_github_token(self, user_id: str, github_token: str):
@@ -137,9 +137,9 @@ class UserDynamicExecutor(MySQLExecutor):
     async def get_publisher_by_qid(self, q_ids: list[int]) -> list:
         placeholder = ",".join(["%s"] * len(q_ids))
         sql = f"""
-            select ud.id, ud.name
+            select ud.user_id, ud.name
             from user_dynamic ud
-            inner join question q on ud.id = q.publisher_id
+            inner join question q on ud.user_id = q.publisher_id
             where q.id in ({placeholder})
         """
         return await self.execute(sql, q_ids, error_return=[])
@@ -171,6 +171,22 @@ class QuestionExecutor(MySQLExecutor):
             error_return=-1,
             require_commit=True
         )
+
+    async def question_update(self, q_id: int, title: str, description: str, difficulty: int):
+        sql = """
+            update question
+            set title = %s, description = %s, difficulty = %s
+            where id = %s
+        """
+        return await self.execute(sql, (title, description, difficulty, q_id), require_commit=True)
+
+    async def question_delete(self, q_id: int):
+        sql = """
+            update question
+            set is_deleted = 1
+            where id = %s
+        """
+        return await self.execute(sql, (q_id,), require_commit=True)
 
 
 class TagExecutor(MySQLExecutor):
@@ -214,6 +230,31 @@ class SolvingFrameworkExecutor(MySQLExecutor):
         """
         return await self.execute(sql, q_ids, error_return=[])
 
+    async def update_solving_framework(self, code_framework: str, framework_id: int):
+        sql = """
+            update solving_framework
+            set code_framework = %s
+            where id = %s
+        """
+        return await self.execute(
+            sql,
+            (code_framework, framework_id),
+            require_commit=True
+        )
+
+    async def get_question_id_by_framework_id(self, template_id: int) -> int:
+        sql = "select question_id from solving_framework where id = %s"
+        return await self.execute(
+            sql, (template_id,), error_return=[]
+        )
+
+    async def solving_framework_delete(self, solving_framework_id: int):
+        sql = """
+            delete from solving_framework
+            where id = %s
+        """
+        return await self.execute(sql, (solving_framework_id,), require_commit=True)
+
     async def add_solving_frameworks_by_qid(self, q_id: int, framework_datas: list):
         sql = """
             insert into solving_framework (code_framework, language_id, question_id)
@@ -241,6 +282,31 @@ class TestExecutor(MySQLExecutor):
         sql = "INSERT INTO test (input_output, question_id) VALUES (%s, %s)"
         await self.execute(sql, [(io, q_id) for io in input_output], executemany=True, require_commit=True)
 
+    async def update_test(self, intput_output: str, test_id: int):
+        sql = """
+            update test
+            set input_output = %s
+            where id = %s
+        """
+        return await self.execute(
+            sql,
+            (intput_output, test_id),
+            require_commit=True
+        )
+
+    async def get_question_id_by_test_id(self, test_id: int) -> int:
+        sql = "select question_id from test where id = %s"
+        return await self.execute(
+            sql, (test_id,), error_return=[]
+        )
+
+    async def test_delete(self, test_id: int):
+        sql = """
+            delete from test
+            where id = %s
+        """
+        return await self.execute(sql, (test_id,), require_commit=True)
+
 
 class JudgeTemplateExecutor(MySQLExecutor):
     async def get_judge_templates_by_qid(self, q_ids: list[int]) -> list:
@@ -264,6 +330,31 @@ class JudgeTemplateExecutor(MySQLExecutor):
             require_commit=True
         )
 
+    async def update_judge_template(self, code: str, template_id: int):
+        sql = """
+            update judge_template
+            set code = %s
+            where id = %s
+        """
+        return await self.execute(
+            sql,
+            (code, template_id),
+            require_commit=True
+        )
+
+    async def judge_template_delete(self, judge_template_id: int):
+        sql = """
+            delete from judge_template
+            where id = %s
+        """
+        return await self.execute(sql, (judge_template_id,), require_commit=True)
+
+    async def get_question_id_by_template_id(self, template_id: int) -> int:
+        sql = "select question_id from judge_template where id = %s"
+        return await self.execute(
+            sql, (template_id,), error_return=[]
+        )
+
 
 class MemoryTimeLimitExecutor(MySQLExecutor):
     async def get_memory_limits_by_qid(self, q_ids: list[int]) -> list:
@@ -274,6 +365,31 @@ class MemoryTimeLimitExecutor(MySQLExecutor):
             where m.question_id in ({placeholder})
         """
         return await self.execute(sql, q_ids, error_return=[])
+
+    async def update_memory_limits(self, time_limit: int, memory_limit: int, limit_id: int):
+        sql = """
+            update memory_time_limit
+            set time_limit = %s, memory_limit = %s
+            where id = %s
+        """
+        return await self.execute(
+            sql,
+            (time_limit, memory_limit, limit_id),
+            require_commit=True
+        )
+
+    async def get_question_id_by_limits_id(self, limit_id: int) -> int:
+        sql = "select question_id from memory_time_limit where id = %s"
+        return await self.execute(
+            sql, (limit_id,), error_return=[]
+        )
+
+    async def memory_limits_delete(self, memory_limits_id: int):
+        sql = """
+            delete from memory_time_limit
+            where id = %s
+        """
+        return await self.execute(sql, (memory_limits_id,), require_commit=True, error_return=[])
 
     async def add_memory_time_limit_by_qid(self, q_id: int, limit_datas: list):
         sql = """

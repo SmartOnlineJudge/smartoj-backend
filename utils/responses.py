@@ -12,6 +12,7 @@ class ResponseCodes:
     EMAIL_NOT_ALLOW_NULL = (235, "邮箱不能为空")
     REQUEST_FREQUENTLY = (240, "请求过于频繁，请稍后再试")
     CAPTCHA_INVALID = (250, "验证码错误或已过期")
+    NOT_FOUND = (255, "请求的资源不存在")
     # 后台管理响应码
     LOGIN_SUCCESS = (300, "登录成功")
     LOGIN_FAILED = (305, "登录失败")
