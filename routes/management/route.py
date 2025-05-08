@@ -13,7 +13,9 @@ from core.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.dependencies import (
     CurrentAdminDependency,
-    SessionRedisDependency
+    SessionRedisDependency,
+    UserDynamicServiceDependency,
+    UserServiceDependency
 )
 from storage.mysql import executors
 
@@ -70,6 +72,7 @@ async def get_admin_user(admin: CurrentAdminDependency):
 async def update_admin_user(
         admin: CurrentAdminDependency,
         session_redis: SessionRedisDependency,
+        service: UserDynamicServiceDependency,
         name: str = Body(max_length=20),
         profile: str = Body(max_length=255),
 ):
@@ -83,11 +86,7 @@ async def update_admin_user(
 
     async def update_db():
         """更新数据库"""
-        await executors.user_dynamic.update_user_dynamic(
-            user_id=admin["user_id"],
-            name=name,
-            profile=profile,
-        )
+        await service.update(admin["user_id"], {'name': name, 'profile': profile})
 
     async def update_cache():
         """更新缓存"""
@@ -190,6 +189,7 @@ async def get_user_status(
 async def update_user_deleted(
         admin: CurrentAdminDependency,
         session_redis: SessionRedisDependency,
+        service: UserServiceDependency,
         user_id: str = Body(max_length=13),
         is_deleted: bool = Body(),
 ):
@@ -204,10 +204,7 @@ async def update_user_deleted(
 
     async def update_db():
         """更新数据库"""
-        await executors.user.update_user_is_delete(
-            user_id=user_id,
-            is_deleted=is_deleted
-        )
+        await service.update(user_id, {"is_deleted": is_deleted})
 
     async def update_cache():
         """更新缓存"""

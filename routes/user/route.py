@@ -20,12 +20,14 @@ from core.user.auth import (
     authenticate,
     login
 )
-from core.user.security import mask
+from core.user.security import mask, password_hash
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.dependencies import (
     CurrentUserDependency,
     SessionRedisDependency,
-    MinioClientDependency
+    MinioClientDependency,
+    UserDynamicServiceDependency,
+    UserServiceDependency
 )
 from storage.oss import MAX_AVATAR_SIZE, upload_avatar
 from storage.mysql import executors, create_user_and_dynamic
@@ -126,7 +128,8 @@ async def upload_user_avatar(
         avatar: UploadFile,
         user: CurrentUserDependency,
         minio_client: MinioClientDependency,
-        session_redis: SessionRedisDependency
+        session_redis: SessionRedisDependency,
+        service: UserDynamicServiceDependency
 ):
     """
     ## 参数列表说明:
@@ -164,7 +167,7 @@ async def upload_user_avatar(
 
     async def update_db():
         """更新数据库"""
-        await executors.user_dynamic.update_user_avatar(user["user_id"], hole_avatar)
+        await service.update(user["user_id"], {'avatar': hole_avatar})
 
     async def update_cache():
         """更新缓存"""
@@ -260,6 +263,7 @@ async def update_password(
         request: Request,
         session_redis: SessionRedisDependency,
         user: CurrentUserDependency,
+        service: UserServiceDependency,
         vfcode: str = Body(pattern=r"^[0-9]{6}$"),
         new_password: str = Body(max_length=32)
 ):
@@ -282,9 +286,9 @@ async def update_password(
         return response
 
     async def update_db():
-        await executors.user.update_user_password(
-            user_id=user["user_id"],
-            password=new_password
+        await service.update(
+            user["user_id"],
+            {'password': password_hash(new_password, settings.SECRETS["PASSWORD"])}
         )
 
     async def update_cache():
@@ -300,6 +304,7 @@ async def update_email(
         request: Request,
         user: CurrentUserDependency,
         session_redis: SessionRedisDependency,
+        service: UserServiceDependency,
         vfcode: str = Body(pattern=r"^[0-9]{6}$"),
         new_email: EmailStr = Body("test@smartoj.com")
 ):
@@ -311,20 +316,18 @@ async def update_email(
     **200**: 业务逻辑执行成功</br>
     **250**: 验证码输入错误或已过期
     """
+    new_email = str(new_email)
     response = await check_verification_code(
         request,
         vfcode=vfcode,
         session_redis=session_redis,
-        email=str(new_email)
+        email=new_email
     )
     if response.code != 200:
         return response
 
     async def update_db():
-        await executors.user.update_user_email(
-            user_id=user["user_id"],
-            email=new_email
-        )
+        await service.update(user["user_id"], {'email': new_email})
 
     async def update_cache():
         cache_name = CachePrefix.USER_PREFIX + user["user_id"]
