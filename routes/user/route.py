@@ -12,14 +12,14 @@ from pydantic import EmailStr
 
 import settings
 from .models import LoginModel, RegisterModel
-from core.user.auth import (
+from core.user.session import (
     logout,
     get_current_user,
     USER_PREFIX,
     cookie_scheme,
-    authenticate,
     login
 )
+from core.user.auth import authenticate
 from core.user.security import mask, password_hash
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.dependencies import (

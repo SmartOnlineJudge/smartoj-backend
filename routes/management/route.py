@@ -8,7 +8,8 @@ from fastapi.responses import JSONResponse
 import settings
 from ..user.models import LoginModel, UserListModel
 from ..user.route import user_logout
-from core.user.auth import authenticate, login, USER_PREFIX, SESSION_PREFIX
+from core.user.auth import authenticate
+from core.user.session import login, USER_PREFIX, SESSION_PREFIX
 from core.user.security import mask
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.dependencies import (
