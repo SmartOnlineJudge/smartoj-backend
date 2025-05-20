@@ -16,10 +16,10 @@ from utils.dependencies import (
     CurrentAdminDependency,
     SessionRedisDependency,
     UserDynamicServiceDependency,
-    UserServiceDependency
+    UserServiceDependency,
+    QuestionServiceDependency
 )
 from storage.mysql import executors
-
 
 router = APIRouter()
 

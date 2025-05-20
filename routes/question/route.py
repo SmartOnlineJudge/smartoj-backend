@@ -4,22 +4,37 @@ from fastapi import APIRouter, Body
 
 from storage.mysql import executors
 from utils.responses import SmartOJResponse, ResponseCodes
-from utils.dependencies import CurrentUserDependency
+from utils.dependencies import CurrentUserDependency, QuestionTagServiceDependency, JudgeTemplateServiceDependency, \
+    MemoryTimeLimitDependency, SolvingFrameworkServiceDependency, TestServiceDependency
 from .models import (
     QuestionCreate,
     QuestionUpdate,
     JudgeTemplateUpdate,
     LimitDataUpdate,
     FrameworkDataUpdate,
-    TestUpdate
+    TestUpdate, QuestionAddLimitData, QuestionAddFrameworkData, QuestionAddTestData, QuestionAddTag, QuestionUpdateTag,
+    QuestionDeleteTag,
 )
-
 
 router = APIRouter()
 
 
+async def permission_detection(question_id: int, user: dict):
+    if not question_id:
+        return 3
+    user_nid = await executors.user.get_id_by_user_id(user["user_id"])
+    user_id = user_nid["id"]
+    publisher_nid = await executors.user_dynamic.get_publisher_by_qid([question_id])
+    if not publisher_nid:
+        return 3
+    publisher_id = publisher_nid[0]["user_id"]
+    if user_id != publisher_id and not user["is_superuser"]:
+        return 0
+    return 1
+
+
 @router.post("", summary="题目信息增加")
-async def get_question_info(
+async def add_question_info(
         user: CurrentUserDependency,
         question_info: QuestionCreate = Body()
 ):
@@ -45,18 +60,26 @@ async def get_question_info(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-async def permission_detection(question_id: int, user: dict):
-    if not question_id:
-        return 3
-    user_nid = await executors.user.get_id_by_user_id(user["user_id"])
-    user_id = user_nid["id"]
-    publisher_nid = await executors.user_dynamic.get_publisher_by_qid([question_id])
-    if not publisher_nid:
-        return 3
-    publisher_id = publisher_nid[0]["user_id"]
-    if user_id != publisher_id and not user["is_superuser"]:
-        return 0
-    return 1
+@router.delete("", summary="题目信息删除")
+async def question_delete(
+        user: CurrentUserDependency,
+        question_id: int = Body(embed=True),
+):
+    """
+    ## 参数列表说明:
+    **question_id**: 要删除的题目id；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    response = await permission_detection(user=user, question_id=question_id)
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await executors.question.question_delete(q_id=question_id)
+    return SmartOJResponse(ResponseCodes.OK)
 
 
 @router.put("", summary="题目信息修改")
@@ -80,6 +103,58 @@ async def question_update(
     await executors.question.question_update(q_id=question_data.id, title=question_data.title,
                                              description=question_data.description,
                                              difficulty=question_data.difficulty)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.post("/judge-template", summary="题目增加判题模板信息")
+async def judge_template_add(
+        user: CurrentUserDependency,
+        service: JudgeTemplateServiceDependency,
+        question_id: int = Body(),
+        language_id: int = Body(),
+        code: str = Body(),
+):
+    """
+    ## 参数列表说明:
+    **question_id**: 需要增加判题模板的题目id；必须；请求体 </br>
+    **language_id**: 需要增加判题模板的编程语言；必须；请求体 </br>
+    **code**: 需要增加判题模板的代码；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    response = await permission_detection(user=user, question_id=question_id)
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await service.create(question_id=question_id, language_id=language_id, code=code)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.delete("/judge-template", summary="判题模板信息删除")
+async def judge_template_delete(
+        user: CurrentUserDependency,
+        judge_template_id: int = Body(embed=True)
+):
+    """
+    ## 参数列表说明:
+    **judge_template_id**: 要删除的判题模板id；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    question_id = await executors.judge_template.get_question_id_by_template_id(judge_template_id)
+    if not question_id:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await executors.judge_template.judge_template_delete(judge_template_id=judge_template_id)
     return SmartOJResponse(ResponseCodes.OK)
 
 
@@ -109,6 +184,60 @@ async def update_judge_template(
     return SmartOJResponse(ResponseCodes.OK)
 
 
+@router.post("/memory-time-limit", summary="题目增加内存时间限制信息")
+async def memory_time_limit_add(
+        user: CurrentUserDependency,
+        service: MemoryTimeLimitDependency,
+        limit_data: QuestionAddLimitData = Body()
+):
+    """
+    ## 参数列表说明:
+    **question_id**: 需要增加内存时间限制的题目id；必须；请求体 </br>
+    **language_id**: 需要增加内存时间限制的编程语言；必须；请求体 </br>
+    **time_limit**: 需要增加的时间限制；必须；请求体 </br>
+    **memory_limit**: 需要增加的内存限制；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    **260**: 无效参数 </br>
+    """
+    response = await permission_detection(user=user, question_id=limit_data.question_id)
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await service.create(question_id=limit_data.question_id, language_id=limit_data.language_id,
+                         time_limit=limit_data.time_limit,
+                         memory_limit=limit_data.memory_limit)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.delete("/memory-time-limit", summary="内存时间限制信息删除")
+async def memory_time_limit_delete(
+        user: CurrentUserDependency,
+        memory_limits_id: int = Body(embed=True)
+):
+    """
+    ## 参数列表说明:
+    **memory_limits_id**: 要删除的内存时间限制id；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    question_id = await executors.memory_time_limit.get_question_id_by_limits_id(memory_limits_id)
+    if not question_id:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await executors.memory_time_limit.memory_limits_delete(memory_limits_id=memory_limits_id)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
 @router.put("/memory-time-limit", summary="内存时间限制信息修改")
 async def update_memory_time_limit(
         user: CurrentUserDependency,
@@ -116,7 +245,7 @@ async def update_memory_time_limit(
 ):
     """
     ## 参数列表说明:
-    **ml_data**: 内存限制基本信息模型；必须；请求体 </br>
+    **memory_time_limit_data**: 内存限制基本信息模型；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
@@ -133,6 +262,55 @@ async def update_memory_time_limit(
     await executors.memory_time_limit.update_memory_limits(memory_time_limit_data.time_limit,
                                                            memory_time_limit_data.memory_limit,
                                                            memory_time_limit_data.id)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.post("/solving-framework", summary="题目增加解题框架信息")
+async def solving_framework_add(
+        user: CurrentUserDependency,
+        service: SolvingFrameworkServiceDependency,
+        solving_framework: QuestionAddFrameworkData = Body()
+):
+    """
+    ## 参数列表说明:
+    **solving_framework**: 解题框架的基本信息模型；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    response = await permission_detection(user=user, question_id=solving_framework.question_id)
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await service.create(question_id=solving_framework.question_id, language_id=solving_framework.language_id,
+                         code_framework=solving_framework.code_framework)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.delete("/solving-framework", summary="解题框架信息删除")
+async def solving_framework_delete(
+        user: CurrentUserDependency,
+        solving_framework_id: int = Body(embed=True)
+):
+    """
+    ## 参数列表说明:
+    **solving_framework_id**: 要删除的解题框架id；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    question_id = await executors.solving_framework.get_question_id_by_framework_id(solving_framework_id)
+    if not question_id:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await executors.solving_framework.solving_framework_delete(solving_framework_id=solving_framework_id)
     return SmartOJResponse(ResponseCodes.OK)
 
 
@@ -162,104 +340,30 @@ async def update_solving_framework(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/test", summary="测试案例信息修改")
-async def update_test(
+@router.post("/test", summary="题目增加测试用例信息")
+async def test_add(
         user: CurrentUserDependency,
-        test: TestUpdate = Body()
+        service: TestServiceDependency,
+        test: QuestionAddTestData = Body()
 ):
     """
     ## 参数列表说明:
-    **test**: 内存限制基本信息模型；必须；请求体 </br>
+    **test**: 测试用例的基本信息模型；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
     **310**: 当前帐号权限不足 </br>
     """
-    question_id = await executors.test.get_question_id_by_test_id(test.id)
-    if not question_id:
-        return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
+    response = await permission_detection(user=user, question_id=test.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.test.update_test(test.input_output, test.id)
+    await service.create(question_id=test.question_id, input_output=test.input_output)
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("", summary="题目信息删除")
-async def question_delete(
-        user: CurrentUserDependency,
-        question_id: int = Body(embed=True),
-):
-    """
-    ## 参数列表说明:
-    **question_id**: 要删除的题目id；必须；请求体 </br>
-    ## 响应代码说明:
-    **200**: 业务逻辑执行成功 </br>
-    **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
-    """
-    response = await permission_detection(user=user, question_id=question_id)
-    if response == 0:
-        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
-    if response == 3:
-        return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.question.question_delete(q_id=question_id)
-    return SmartOJResponse(ResponseCodes.OK)
-
-
-@router.delete("/judge-template", summary="判题模板信息删除")
-async def judge_template_delete(
-        user: CurrentUserDependency,
-        judge_template_id: int = Body(embed=True)
-):
-    """
-    ## 参数列表说明:
-    **judge_template_id**: 要删除的判题模板id；必须；请求体 </br>
-    ## 响应代码说明:
-    **200**: 业务逻辑执行成功 </br>
-    **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
-    """
-    question_id = await executors.judge_template.get_question_id_by_template_id(judge_template_id)
-    if not question_id:
-        return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
-    if response == 0:
-        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
-    if response == 3:
-        return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.judge_template.judge_template_delete(judge_template_id=judge_template_id)
-    return SmartOJResponse(ResponseCodes.OK)
-
-
-@router.delete("/solving-framework", summary="解题框架信息删除")
-async def solving_framework_delete(
-        user: CurrentUserDependency,
-        solving_framework_id: int = Body(embed=True)
-):
-    """
-    ## 参数列表说明:
-    **solving_framework_id**: 要删除的解题框架id；必须；请求体 </br>
-    ## 响应代码说明:
-    **200**: 业务逻辑执行成功 </br>
-    **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
-    """
-    question_id = await executors.solving_framework.get_question_id_by_framework_id(solving_framework_id)
-    if not question_id:
-        return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
-    if response == 0:
-        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
-    if response == 3:
-        return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.solving_framework.solving_framework_delete(solving_framework_id=solving_framework_id)
-    return SmartOJResponse(ResponseCodes.OK)
-
-
-@router.delete("/test", summary="测试用例删除")
+@router.delete("/test", summary="测试用例信息删除")
 async def test_delete(
         user: CurrentUserDependency,
         test_id: int = Body(embed=True)
@@ -284,20 +388,20 @@ async def test_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/memory-time-limit", summary="内存时间限制删除")
-async def memory_time_limit_delete(
+@router.put("/test", summary="测试用例信息修改")
+async def update_test(
         user: CurrentUserDependency,
-        memory_limits_id: int = Body(embed=True)
+        test: TestUpdate = Body()
 ):
     """
     ## 参数列表说明:
-    **memory_limits_id**: 要删除的内存时间限制id；必须；请求体 </br>
+    **test**: 内存限制基本信息模型；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
     **310**: 当前帐号权限不足 </br>
     """
-    question_id = await executors.memory_time_limit.get_question_id_by_limits_id(memory_limits_id)
+    question_id = await executors.test.get_question_id_by_test_id(test.id)
     if not question_id:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
     response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
@@ -305,5 +409,76 @@ async def memory_time_limit_delete(
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.memory_time_limit.memory_limits_delete(memory_limits_id=memory_limits_id)
+    await executors.test.update_test(test.input_output, test.id)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.post("/question-tag", summary="题目增加题目标签信息")
+async def solving_framework_add(
+        user: CurrentUserDependency,
+        service: QuestionTagServiceDependency,
+        question_tag: QuestionAddTag = Body()
+):
+    """
+    ## 参数列表说明:
+    **question_tag**: 题目标签的基本信息模型；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    response = await permission_detection(user=user, question_id=question_tag.question_id)
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await service.create(question_id=question_tag.question_id, tag_id=question_tag.tag_id)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.delete("/question-tag", summary="题目标签信息删除")
+async def question_tag_delete(
+        user: CurrentUserDependency,
+        service: QuestionTagServiceDependency,
+        question_tag: QuestionDeleteTag = Body()
+):
+    """
+    ## 参数列表说明:
+    **question_tag**: 要删除的题目id信息模型；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    response = await permission_detection(user=user, question_id=question_tag.question_id)
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await service.delete(question_id=question_tag.question_id, tag_ids=question_tag.tag_ids)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.put("/question-tag", summary="题目标签信息修改")
+async def question_tag_update(
+        user: CurrentUserDependency,
+        service: QuestionTagServiceDependency,
+        question_tag: QuestionUpdateTag = Body(),
+):
+    """
+    ## 参数列表说明:
+    **question_id**: 要修改的题目id；必须；请求体 </br>
+    **tag_id**: 要修改的标签id；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    response = await permission_detection(user=user, question_id=question_tag.question_id)
+    if response == 0:
+        return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
+    if response == 3:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    await service.update(question_id=question_tag.question_id, tag_id=question_tag.tag_id,
+                         new_tag_id=question_tag.new_tag_id)
     return SmartOJResponse(ResponseCodes.OK)

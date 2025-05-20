@@ -1,12 +1,15 @@
+from sqlmodel import Field
 from enum import Enum
 from typing import List
+
+from _decimal import Decimal
 
 from utils.models import SmartOJSQLModel
 
 
 class LimitDataCreate(SmartOJSQLModel):
     time_limit: int
-    memory_limit: float
+    memory_limit: Decimal = Field(decimal_places=2, max_digits=8)
     language_id: int
 
 
@@ -63,3 +66,30 @@ class FrameworkDataUpdate(SmartOJSQLModel):
 class TestUpdate(SmartOJSQLModel):
     id: int
     input_output: str
+
+
+class QuestionAddLimitData(LimitDataCreate):
+    question_id: int
+
+
+class QuestionAddFrameworkData(FrameworkDataCreate):
+    question_id: int
+
+
+class QuestionAddTestData(SmartOJSQLModel):
+    question_id: int
+    input_output: str
+
+
+class QuestionAddTag(SmartOJSQLModel):
+    question_id: int
+    tag_id: int
+
+
+class QuestionUpdateTag(QuestionAddTag):
+    new_tag_id: int
+
+
+class QuestionDeleteTag(SmartOJSQLModel):
+    question_id: int
+    tag_ids: list[int]

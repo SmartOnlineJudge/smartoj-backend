@@ -1,4 +1,6 @@
 from ..base import MySQLService
+from sqlmodel import select
+from .models import QuestionTag, JudgeTemplate, MemoryTimeLimit, SolvingFramework, Test
 
 
 class QuestionService(MySQLService):
@@ -10,7 +12,47 @@ class TagService(MySQLService):
 
 
 class QuestionTagService(MySQLService):
-    pass
+
+    async def create(self, question_id: int, tag_id: int):
+        """
+        根据 question_id 增加题目标签信息
+        :param question_id: 非行 ID
+        :param tag_id: 增加的题目标签id
+        :return:
+        """
+        question_tag = QuestionTag(question_id=question_id, tag_id=tag_id)
+        self.session.add(question_tag)
+        await self.session.commit()
+
+    async def delete(self, question_id: int, tag_ids: list[int]):
+        """
+        根据 question_id 删除指定的id的题目标签基本信息
+        :param question_id: 非行 ID
+        :param tag_ids: 需要删除的标签id数组
+        :return:
+        """
+        statement = select(QuestionTag).where(QuestionTag.question_id == question_id, QuestionTag.tag_id.in_(tag_ids))
+        tags = await self.session.exec(statement)  # type: ignore
+        for tag in tags:
+            await self.session.delete(tag)
+        await self.session.commit()
+
+    async def update(self, question_id: int, tag_id: int, new_tag_id: int):
+        """
+        根据 question_id 更新指定的id的题目标签
+        :param question_id: 非行 ID
+        :param tag_id: 需要更新的题目标签id
+        :param new_tag_id: 更新后的题目标签id
+        :return:
+        """
+        statement = select(QuestionTag).where(QuestionTag.question_id == question_id, QuestionTag.tag_id == tag_id)
+        question_tags = await self.session.exec(statement)  # type: ignore
+        question_tag = question_tags.first()
+        if question_tag is None:
+            return
+        question_tag.tag_id = new_tag_id
+        self.session.add(question_tag)
+        await self.session.commit()
 
 
 class LanguageService(MySQLService):
@@ -18,16 +60,58 @@ class LanguageService(MySQLService):
 
 
 class SolvingFrameworkService(MySQLService):
-    pass
+    async def create(self, question_id: int, language_id: int, code_framework: str):
+        """
+        根据 question_id 增加解题框架信息
+        :param question_id: 非行 ID
+        :param language_id: 更新的解题框架所使用的编程语言信息
+        :param code_framework: 解题框架代码
+        :return:
+        """
+        solving_framework = SolvingFramework(question_id=question_id, language_id=language_id,
+                                             code_framework=code_framework)
+        self.session.add(solving_framework)
+        await self.session.commit()
 
 
 class TestService(MySQLService):
-    pass
+    async def create(self, question_id: int, input_output: str):
+        """
+        根据 question_id 增加测试用例信息
+        :param question_id: 非行 ID
+        :param input_output: 增加的输入输出测试用例
+        :return:
+        """
+        test = Test(question_id=question_id, input_output=input_output)
+        self.session.add(test)
+        await self.session.commit()
 
 
 class JudgeTemplateService(MySQLService):
-    pass
+    async def create(self, question_id: int, language_id: int, code: str):
+        """
+        根据 question_id 增加判题模板信息
+        :param question_id: 非行 ID
+        :param language_id: 更新的判题模板所使用的编程语言信息
+        :param code: 判题模板代码
+        :return:
+        """
+        judge_template = JudgeTemplate(question_id=question_id, language_id=language_id, code=code)
+        self.session.add(judge_template)
+        await self.session.commit()
 
 
 class MemoryTimeLimitService(MySQLService):
-    pass
+    async def create(self, question_id: int, language_id: int, time_limit: int, memory_limit: float):
+        """
+        根据 question_id 增加内存时间限制信息
+        :param question_id: 非行 ID
+        :param language_id: 增加的内存时间限制所使用的编程语言信息
+        :param time_limit: 时间限制
+        :param memory_limit: 内存限制
+        :return:
+        """
+        memory_time_limit = MemoryTimeLimit(question_id=question_id, language_id=language_id, time_limit=time_limit,
+                                            memory_limit=memory_limit)
+        self.session.add(memory_time_limit)
+        await self.session.commit()
