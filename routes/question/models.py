@@ -1,8 +1,8 @@
-from sqlmodel import Field
 from enum import Enum
 from typing import List
+from decimal import Decimal
 
-from _decimal import Decimal
+from sqlmodel import Field
 
 from utils.models import SmartOJSQLModel
 

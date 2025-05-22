@@ -17,7 +17,7 @@ from utils.dependencies import (
     SessionRedisDependency,
     UserDynamicServiceDependency,
     UserServiceDependency,
-    QuestionServiceDependency
+    QuestionServiceDependency, TagServiceDependency, LanguageServiceDependency
 )
 from storage.mysql import executors
 
@@ -302,3 +302,120 @@ async def get_question_info(
         }
         results.append(result)
     return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
+
+
+@router.post("/tag", summary="添加新标签")
+async def tag_add(
+        _user: CurrentAdminDependency,
+        service: TagServiceDependency,
+        name: str = Body(),
+        score: int = Body()
+):
+    """
+    ## 参数列表说明:
+    **name**: 添加的标签名；必须；请求体 </br>
+    **score**: 添加标签对应的分数；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    await service.create(name=name, score=score)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.put("/tag", summary="更新标签")
+async def tag_update(
+        _user: CurrentAdminDependency,
+        service: TagServiceDependency,
+        tag_id: int = Body(),
+        name: str = Body(),
+        score: int = Body()
+):
+    """
+    ## 参数列表说明:
+    **tag_id**: 需要更新的标签的id；必须；请求体 </br>
+    **name**: 更新的标签名；必须；请求体 </br>
+    **score**: 更新标签对应的分数；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    await service.update(tag_id=tag_id, document={"name": name, "score": score})
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.delete("/tag", summary="禁用标签")
+async def tag_delete(
+        _user: CurrentAdminDependency,
+        service: TagServiceDependency,
+        tag_id: int = Body(),
+        is_deleted: bool = Body()
+):
+    """
+    ## 参数列表说明:
+    **tag_id**: 需要禁用的标签的id；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    await service.update(tag_id=tag_id, document={"is_deleted": is_deleted})
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.post("/language", summary="添加新编程语言")
+async def language_add(
+        _user: CurrentAdminDependency,
+        service: LanguageServiceDependency,
+        name: str = Body(),
+        version: str = Body()
+):
+    """
+    ## 参数列表说明:
+    **name**: 添加的编程语言名；必须；请求体 </br>
+    **version**: 添加编程语言对应的版本；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    await service.create(name=name, version=version)
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.put("/language", summary="更新编程语言信息")
+async def language_update(
+        _user: CurrentAdminDependency,
+        service: LanguageServiceDependency,
+        language_id: int = Body(),
+        name: str = Body(),
+        version: str = Body()
+):
+    """
+    ## 参数列表说明:
+    **language_id**: 需要更新的编程语言的id；必须；请求体 </br>
+    **name**: 更新的编程语言名；必须；请求体 </br>
+    **version**: 更新编程语言版本；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    await service.update(language_id=language_id, document={"name": name, "version": version})
+    return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.delete("/language", summary="禁用编程语言")
+async def language_delete(
+        _user: CurrentAdminDependency,
+        service: LanguageServiceDependency,
+        language_id: int = Body(),
+        is_deleted: bool = Body()
+):
+    """
+    ## 参数列表说明:
+    **language_id**: 需要禁用的编程语言的id；必须；请求体 </br>
+    **is_deleted**: 该语言是否禁用（bool值）；必须；请求体 </br>
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    **310**: 当前帐号权限不足 </br>
+    """
+    await service.update(language_id=language_id, document={"is_deleted": is_deleted})
+    return SmartOJResponse(ResponseCodes.OK)

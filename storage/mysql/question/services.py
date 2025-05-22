@@ -1,6 +1,8 @@
+from typing import Any
+
 from ..base import MySQLService
 from sqlmodel import select
-from .models import QuestionTag, JudgeTemplate, MemoryTimeLimit, SolvingFramework, Test
+from .models import QuestionTag, JudgeTemplate, MemoryTimeLimit, SolvingFramework, Test, Tag, Language
 
 
 class QuestionService(MySQLService):
@@ -8,7 +10,33 @@ class QuestionService(MySQLService):
 
 
 class TagService(MySQLService):
-    pass
+    async def create(self, name: str, score: int):
+        """
+        增加新标签
+        :param name: 标签名
+        :param score: 标签分数
+        :return:
+        """
+        tag = Tag(name=name, score=score)
+        self.session.add(tag)
+        await self.session.commit()
+
+    async def update(self, tag_id: str, document: dict[str, Any]):
+        """
+        根据 tag_id 更新指定的列名的标签基本信息
+        :param tag_id: 非行 ID
+        :param document: 需要更新的文档信息，例如：{'name': '双指针', 'score': '30'}
+        :return:
+        """
+        statement = select(Tag).where(Tag.id == tag_id)
+        tags = await self.session.exec(statement)  # type: ignore
+        tag = tags.first()
+        if tag is None:
+            return
+        for field, value in document.items():
+            setattr(tag, field, value)
+        self.session.add(tag)
+        await self.session.commit()
 
 
 class QuestionTagService(MySQLService):
@@ -56,7 +84,33 @@ class QuestionTagService(MySQLService):
 
 
 class LanguageService(MySQLService):
-    pass
+    async def create(self, name: str, version: str):
+        """
+        增加新编程语言
+        :param name: 编程语言名
+        :param version: 编程语言版本
+        :return:
+        """
+        language = Language(name=name, version=version)
+        self.session.add(language)
+        await self.session.commit()
+
+    async def update(self, language_id: str, document: dict[str, Any]):
+        """
+        根据 language_id 更新指定的列名的编程语言基本信息
+        :param language_id: 非行 ID
+        :param document: 需要更新的文档信息，例如：{'name': 'python', 'version': '3.11'}
+        :return:
+        """
+        statement = select(Language).where(Language.id == language_id)
+        languages = await self.session.exec(statement)  # type: ignore
+        language = languages.first()
+        if language is None:
+            return
+        for field, value in document.items():
+            setattr(language, field, value)
+        self.session.add(language)
+        await self.session.commit()
 
 
 class SolvingFrameworkService(MySQLService):
