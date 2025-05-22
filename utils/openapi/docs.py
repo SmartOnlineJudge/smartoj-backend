@@ -4,6 +4,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.openapi.docs import swagger_ui_default_parameters
 from fastapi.encoders import jsonable_encoder
 
+import settings
+
 
 def custom_swagger_ui_html(
     *,
@@ -11,11 +13,14 @@ def custom_swagger_ui_html(
     title: str,
     swagger_js_url: str = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
     swagger_css_url: str = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
-    swagger_favicon_url: str = "https://fastapi.tiangolo.com/img/favicon.png",
+    swagger_favicon_url: str = None,
     oauth2_redirect_url: str = None,
     init_oauth=None,
     swagger_ui_parameters=None,
 ) -> HTMLResponse:
+    if swagger_favicon_url is None:
+        swagger_favicon_url = settings.API_DOCS_LOGO or "https://fastapi.tiangolo.com/img/favicon.png"
+
     current_swagger_ui_parameters = swagger_ui_default_parameters.copy()
     if swagger_ui_parameters:
         current_swagger_ui_parameters.update(swagger_ui_parameters)

@@ -4,6 +4,10 @@ import json
 # 是否是开发环境
 DEV_ENV: bool = True
 
+# API 接口文档的 Logo
+# 如果为空或者是一个空字符串，那么默认使用 FastAPI 的 Logo
+API_DOCS_LOGO: str = "https://img.picui.cn/free/2025/05/22/682f01be4e462.png"
+
 # 元数据文件名
 METADATA_FILENAME: str = "metadata_dev.json" if DEV_ENV else "metadata.json"
 

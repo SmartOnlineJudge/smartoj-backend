@@ -4,15 +4,26 @@ from fastapi import APIRouter, Body
 
 from storage.mysql import executors
 from utils.responses import SmartOJResponse, ResponseCodes
-from utils.dependencies import CurrentUserDependency, QuestionTagServiceDependency, JudgeTemplateServiceDependency, \
-    MemoryTimeLimitDependency, SolvingFrameworkServiceDependency, TestServiceDependency
+from utils.dependencies import (
+    CurrentUserDependency, 
+    QuestionTagServiceDependency, 
+    JudgeTemplateServiceDependency, 
+    MemoryTimeLimitDependency, 
+    SolvingFrameworkServiceDependency, 
+    TestServiceDependency
+)
 from .models import (
     QuestionCreate,
     QuestionUpdate,
     JudgeTemplateUpdate,
     LimitDataUpdate,
     FrameworkDataUpdate,
-    TestUpdate, QuestionAddLimitData, QuestionAddFrameworkData, QuestionAddTestData, QuestionAddTag, QuestionUpdateTag,
+    TestUpdate, 
+    QuestionAddLimitData, 
+    QuestionAddFrameworkData, 
+    QuestionAddTestData, 
+    QuestionAddTag, 
+    QuestionUpdateTag,
     QuestionDeleteTag,
 )
 
@@ -33,7 +44,7 @@ async def permission_detection(question_id: int, user: dict):
     return 1
 
 
-@router.post("", summary="题目信息增加")
+@router.post("", summary="题目信息增加", tags=["题目信息"])
 async def add_question_info(
         user: CurrentUserDependency,
         question_info: QuestionCreate = Body()
@@ -60,7 +71,7 @@ async def add_question_info(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("", summary="题目信息删除")
+@router.delete("", summary="题目信息删除", tags=["题目信息"])
 async def question_delete(
         user: CurrentUserDependency,
         question_id: int = Body(embed=True),
@@ -82,7 +93,7 @@ async def question_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("", summary="题目信息修改")
+@router.put("", summary="题目信息修改", tags=["题目信息"])
 async def question_update(
         user: CurrentUserDependency,
         question_data: QuestionUpdate = Body()
@@ -106,7 +117,7 @@ async def question_update(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.post("/judge-template", summary="题目增加判题模板信息")
+@router.post("/judge-template", summary="题目增加判题模板信息", tags=["判题模板"])
 async def judge_template_add(
         user: CurrentUserDependency,
         service: JudgeTemplateServiceDependency,
@@ -133,7 +144,7 @@ async def judge_template_add(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/judge-template", summary="判题模板信息删除")
+@router.delete("/judge-template", summary="判题模板信息删除", tags=["判题模板"])
 async def judge_template_delete(
         user: CurrentUserDependency,
         judge_template_id: int = Body(embed=True)
@@ -158,7 +169,7 @@ async def judge_template_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/judge-template", summary="判题模板信息修改")
+@router.put("/judge-template", summary="判题模板信息修改", tags=["判题模板"])
 async def update_judge_template(
         user: CurrentUserDependency,
         judge_template_data: JudgeTemplateUpdate = Body()
@@ -185,7 +196,7 @@ async def update_judge_template(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.post("/memory-time-limit", summary="题目增加内存时间限制信息")
+@router.post("/memory-time-limit", summary="题目增加内存时间限制信息", tags=["内存时间限制"])
 async def memory_time_limit_add(
         user: CurrentUserDependency,
         service: MemoryTimeLimitDependency,
@@ -214,7 +225,7 @@ async def memory_time_limit_add(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/memory-time-limit", summary="内存时间限制信息删除")
+@router.delete("/memory-time-limit", summary="内存时间限制信息删除", tags=["内存时间限制"])
 async def memory_time_limit_delete(
         user: CurrentUserDependency,
         memory_limits_id: int = Body(embed=True)
@@ -239,7 +250,7 @@ async def memory_time_limit_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/memory-time-limit", summary="内存时间限制信息修改")
+@router.put("/memory-time-limit", summary="内存时间限制信息修改", tags=["内存时间限制"])
 async def update_memory_time_limit(
         user: CurrentUserDependency,
         memory_time_limit_data: LimitDataUpdate = Body()
@@ -268,7 +279,7 @@ async def update_memory_time_limit(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.post("/solving-framework", summary="题目增加解题框架信息")
+@router.post("/solving-framework", summary="题目增加解题框架信息", tags=["解题框架"])
 async def solving_framework_add(
         user: CurrentUserDependency,
         service: SolvingFrameworkServiceDependency,
@@ -292,7 +303,7 @@ async def solving_framework_add(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/solving-framework", summary="解题框架信息删除")
+@router.delete("/solving-framework", summary="解题框架信息删除", tags=["解题框架"])
 async def solving_framework_delete(
         user: CurrentUserDependency,
         solving_framework_id: int = Body(embed=True)
@@ -317,7 +328,7 @@ async def solving_framework_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/solving-framework", summary="解题框架信息修改")
+@router.put("/solving-framework", summary="解题框架信息修改", tags=["解题框架"])
 async def update_solving_framework(
         user: CurrentUserDependency,
         solving_framework_data: FrameworkDataUpdate = Body()
@@ -343,7 +354,7 @@ async def update_solving_framework(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.post("/test", summary="题目增加测试用例信息")
+@router.post("/test", summary="题目增加测试用例信息", tags=["测试用例"])
 async def test_add(
         user: CurrentUserDependency,
         service: TestServiceDependency,
@@ -366,7 +377,7 @@ async def test_add(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/test", summary="测试用例信息删除")
+@router.delete("/test", summary="测试用例信息删除", tags=["测试用例"])
 async def test_delete(
         user: CurrentUserDependency,
         test_id: int = Body(embed=True)
@@ -391,7 +402,7 @@ async def test_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/test", summary="测试用例信息修改")
+@router.put("/test", summary="测试用例信息修改", tags=["测试用例"])
 async def update_test(
         user: CurrentUserDependency,
         test: TestUpdate = Body()
@@ -417,7 +428,7 @@ async def update_test(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.post("/question-tag", summary="题目增加题目标签信息")
+@router.post("/question-tag", summary="题目增加题目标签信息", tags=["题目标签"])
 async def solving_framework_add(
         user: CurrentUserDependency,
         service: QuestionTagServiceDependency,
@@ -441,7 +452,7 @@ async def solving_framework_add(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/question-tag", summary="题目标签信息删除")
+@router.delete("/question-tag", summary="题目标签信息删除", tags=["题目标签"])
 async def question_tag_delete(
         user: CurrentUserDependency,
         service: QuestionTagServiceDependency,
@@ -465,7 +476,7 @@ async def question_tag_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/question-tag", summary="题目标签信息修改")
+@router.put("/question-tag", summary="题目标签信息修改", tags=["题目标签"])
 async def question_tag_update(
         user: CurrentUserDependency,
         service: QuestionTagServiceDependency,
