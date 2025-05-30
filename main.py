@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from uvicorn.config import logger
 
 from routes import user_router, question_router, management_router
 from storage.mysql import executors, engine
@@ -9,16 +10,28 @@ from mq.broker import broker
 from utils.openapi.docs import custom_swagger_ui_html
 
 
+async def on_startup():
+    logger.info("Creating MySQL connection")
+    await executors.initialize()
+    logger.info("Creating RabbitMQ connection")
+    await broker.startup()
+
+
+async def on_shutdown():
+    logger.info("Disconnecting with MySQL")
+    await executors.destroy()
+    await engine.dispose()
+    logger.info("Disconnecting with RabbitMQ")
+    await broker.shutdown()
+    logger.info("Disconnecting with Redis")
+    await close_cache_connections()
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await executors.initialize()  # 创建数据库连接
-    await broker.startup()  # 启动消息队列服务
+    await on_startup()
     yield
-    await executors.destroy()  # 销毁数据库连接
-    await broker.shutdown()  # 关闭消息队列服务
-    await close_cache_connections()  # 关闭所有缓存连接池
-    # SQLModel ORM
-    await engine.dispose()  # 销毁数据库连接池
+    await on_shutdown()
 
 
 app = FastAPI(title='智能算法刷题平台-后端 API 文档', docs_url=None, lifespan=lifespan)
