@@ -227,7 +227,7 @@ async def update_user_deleted(
 
 
 @router.delete("/user", summary="强制用户下线")
-async def update_user_down(
+async def update_user_offline(
         _: CurrentAdminDependency,
         session_redis: SessionRedisDependency,
         session_id: str = Body(max_length=32, embed=True),
@@ -318,7 +318,6 @@ async def tag_add(
     **score**: 添加标签对应的分数；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
-    **310**: 当前帐号权限不足 </br>
     """
     await service.create(name=name, score=score)
     return SmartOJResponse(ResponseCodes.OK)
@@ -339,7 +338,6 @@ async def tag_update(
     **score**: 更新标签对应的分数；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
-    **310**: 当前帐号权限不足 </br>
     """
     await service.update(tag_id=tag_id, document={"name": name, "score": score})
     return SmartOJResponse(ResponseCodes.OK)
@@ -355,9 +353,9 @@ async def tag_delete(
     """
     ## 参数列表说明:
     **tag_id**: 需要禁用的标签的id；必须；请求体 </br>
+    **is_deleted**: 该标签是否禁用（bool值）；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
-    **310**: 当前帐号权限不足 </br>
     """
     await service.update(tag_id=tag_id, document={"is_deleted": is_deleted})
     return SmartOJResponse(ResponseCodes.OK)
@@ -376,7 +374,6 @@ async def language_add(
     **version**: 添加编程语言对应的版本；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
-    **310**: 当前帐号权限不足 </br>
     """
     await service.create(name=name, version=version)
     return SmartOJResponse(ResponseCodes.OK)
@@ -397,7 +394,6 @@ async def language_update(
     **version**: 更新编程语言版本；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
-    **310**: 当前帐号权限不足 </br>
     """
     await service.update(language_id=language_id, document={"name": name, "version": version})
     return SmartOJResponse(ResponseCodes.OK)
@@ -416,7 +412,6 @@ async def language_delete(
     **is_deleted**: 该语言是否禁用（bool值）；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
-    **310**: 当前帐号权限不足 </br>
     """
     await service.update(language_id=language_id, document={"is_deleted": is_deleted})
     return SmartOJResponse(ResponseCodes.OK)
