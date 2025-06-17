@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
 
+import uvicorn
 from fastapi import FastAPI
 from uvicorn.config import logger
 
+import settings
 from routes import user_router, question_router, management_router
 from storage.mysql import executors, engine
 from storage.cache import close_cache_connections
@@ -49,3 +51,11 @@ def custom_swagger_ui_html_endpoint():
 app.include_router(user_router, prefix="/user", tags=["用户信息相关接口"])
 app.include_router(question_router, prefix="/question")
 app.include_router(management_router, prefix="/management", tags=["后台管理系统相关接口"])
+
+
+if __name__ == "__main__":
+    run_config = {
+        "host": "127.0.0.1" if settings.DEV_ENV else "0.0.0.0",
+        "log_config": "log-config.json"
+    }
+    uvicorn.run(app, **run_config)

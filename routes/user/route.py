@@ -6,6 +6,7 @@ import time
 
 import filetype
 from fastapi import APIRouter, UploadFile, Body
+from fastapi.concurrency import run_in_threadpool
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
@@ -161,7 +162,7 @@ async def upload_user_avatar(
 
     file_type = avatar.filename.rsplit(".", 1)[-1]
 
-    hole_avatar = upload_avatar(content, file_type, minio_client)
+    hole_avatar = await run_in_threadpool(upload_avatar, content, file_type, minio_client)
     if not hole_avatar:
         return SmartOJResponse(ResponseCodes.FILE_UPLOAD_ERROR)
 
