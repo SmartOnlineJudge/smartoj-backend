@@ -16,7 +16,10 @@ from .question.services import (
 
 
 executors = MySQLExecutors()
-engine = create_async_engine(pool_recycle=60)
+engine = create_async_engine(
+    pool_recycle=60, 
+    isolation_level="READ COMMITTED"  # 修改 MySQL 的事务隔离级别为“读已提交”
+)
 
 
 async def get_async_session():

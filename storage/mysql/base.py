@@ -28,7 +28,8 @@ class MySQLExecutor:
                 password=settings.MYSQL_CONF["PASSWORD"],
                 db=settings.MYSQL_CONF["NAME"],
                 cursorclass=aiomysql.DictCursor,
-                pool_recycle=60
+                pool_recycle=60,
+                init_command="SET SESSION transaction_isolation='READ-COMMITTED'"
             )
 
     @asynccontextmanager
