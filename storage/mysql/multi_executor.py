@@ -312,9 +312,9 @@ class JudgeTemplateExecutor(MySQLExecutor):
     async def get_judge_templates_by_qid(self, q_ids: list[int]) -> list:
         placeholder = ",".join(["%s"] * len(q_ids))
         sql = f"""
-            select j.id, j.code,j. language_id, j.question_id as qid, j.language_id as lid
+            select j.id, j.code, j.language_id, j.question_id as qid, j.language_id as lid
             from judge_template j
-            where j.language_id in ({placeholder})
+            where j.question_id in ({placeholder})
         """
         return await self.execute(sql, q_ids, error_return=[])
 
