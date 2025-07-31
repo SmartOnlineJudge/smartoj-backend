@@ -1,7 +1,11 @@
 from typing import Any
 
-from ..base import MySQLService
 from sqlmodel import select
+from sqlalchemy.orm import selectinload
+from sqlalchemy import func
+
+from ..base import MySQLService
+from ..user.models import User
 from .models import (
     QuestionTag, 
     JudgeTemplate, 
@@ -15,6 +19,25 @@ from .models import (
 
 
 class QuestionService(MySQLService):
+    async def query_by_page(self, page: int, size: int):
+        statement1 = (
+            select(Question)
+            .options(selectinload(Question.tags).selectinload(QuestionTag.tag))
+            .options(selectinload(Question.tests))
+            .options(selectinload(Question.solving_frameworks).selectinload(SolvingFramework.language))
+            .options(selectinload(Question.memory_time_limits).selectinload(MemoryTimeLimit.language))
+            .options(selectinload(Question.judge_templates).selectinload(JudgeTemplate.language))
+            .options(selectinload(Question.publisher).selectinload(User.user_dynamic))
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        statement2 = select(func.count(Question.id))
+
+        questions = await self.session.exec(statement1)
+        total = (await self.session.exec(statement2)).one()
+
+        return questions, total
+
     async def create(self, title: str, description: str, difficulty: str, publisher_id: int):
         question = Question(
             title=title,
