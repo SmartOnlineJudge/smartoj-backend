@@ -1,5 +1,3 @@
-import asyncio
-
 from fastapi import APIRouter, Body
 
 from storage.mysql import executors
@@ -10,7 +8,9 @@ from utils.dependencies import (
     JudgeTemplateServiceDependency, 
     MemoryTimeLimitDependency, 
     SolvingFrameworkServiceDependency, 
-    TestServiceDependency
+    TestServiceDependency,
+    QuestionServiceDependency,
+    UserServiceDependency,
 )
 from .models import (
     QuestionCreate,
@@ -47,33 +47,27 @@ async def permission_detection(question_id: int, user: dict):
 @router.post("", summary="题目信息增加", tags=["题目信息"])
 async def add_question_info(
         user: CurrentUserDependency,
-        question_info: QuestionCreate = Body()
+        question_service: QuestionServiceDependency,
+        user_service: UserServiceDependency,
+        question: QuestionCreate
 ):
     """
     ## 参数列表说明:
-    **question_info**: 题目信息模型；必须；请求体 </br>
-    **size**: 每页的数据数；必须；请求体；默认为5；查询参数 </br>
+    **title**: 题目标题；必须；请求体 </br>
+    **description**: 题目描述；必须；请求体 </br>
+    **difficulty**: 题目难度；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功
     """
-    publisher_id = await executors.user.get_id_by_user_id(user["user_id"])
-    qid = await executors.question.question_add(title=question_info.title, description=question_info.description,
-                                                difficulty=question_info.difficulty,
-                                                publisher_id=publisher_id["id"])
-    tasks = [
-        executors.tag.add_tags_by_qid(qid, question_info.tags_ids),
-        executors.test.add_test_by_qid(qid, question_info.input_outputs),
-        executors.memory_time_limit.add_memory_time_limit_by_qid(qid, question_info.limit_datas),
-        executors.solving_framework.add_solving_frameworks_by_qid(qid, question_info.framework_datas),
-        executors.judge_template.add_judge_templates_by_qid(qid, question_info.judge_templates)
-    ]
-    await asyncio.gather(*tasks)
+    user = await user_service.query_by_index("user_id", user["user_id"])
+    await question_service.create(publisher_id=user.id, **question.model_dump())
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("", summary="题目信息删除", tags=["题目信息"])
+@router.delete("", summary="逻辑删除题目", tags=["题目信息"], include_in_schema=False)
 async def question_delete(
         user: CurrentUserDependency,
+        service: QuestionServiceDependency,
         question_id: int = Body(embed=True),
 ):
     """
@@ -89,31 +83,35 @@ async def question_delete(
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.question.question_delete(q_id=question_id)
+    await service.update(question_id, {"is_deleted": True})
     return SmartOJResponse(ResponseCodes.OK)
 
 
 @router.put("", summary="题目信息修改", tags=["题目信息"])
 async def question_update(
         user: CurrentUserDependency,
-        question_data: QuestionUpdate = Body()
+        service: QuestionServiceDependency,
+        question: QuestionUpdate
 ):
     """
     ## 参数列表说明:
-    **question_data**: 题目基本信息模型；必须；请求体 </br>
+    **id**: 要修改的题目ID；必须；请求体 </br>
+    **title**: 题目标题；必须；请求体 </br>
+    **description**: 题目描述；必须；请求体 </br>
+    **difficulty**: 题目难度；必须；请求体 </br>
+    **is_deleted**: 是否逻辑删除；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
+    **310**: 当前帐号权限不足
     """
-    response = await permission_detection(user=user, question_id=question_data.id)
+    response = await permission_detection(user=user, question_id=question.id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.question.question_update(q_id=question_data.id, title=question_data.title,
-                                             description=question_data.description,
-                                             difficulty=question_data.difficulty)
+    document = question.model_dump(exclude={"id": True})
+    await service.update(question_id=question.id, document=document)
     return SmartOJResponse(ResponseCodes.OK)
 
 

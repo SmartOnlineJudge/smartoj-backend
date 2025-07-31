@@ -33,11 +33,6 @@ class QuestionCreate(SmartOJSQLModel):
     title: str
     description: str
     difficulty: Difficulty
-    tags_ids: list[int]
-    input_outputs: list[str]
-    limit_datas: List[LimitDataCreate]
-    framework_datas: List[FrameworkDataCreate]
-    judge_templates: List[JudgeTemplateCreate]
 
 
 class QuestionUpdate(SmartOJSQLModel):
@@ -45,6 +40,7 @@ class QuestionUpdate(SmartOJSQLModel):
     title: str
     description: str
     difficulty: Difficulty
+    is_deleted: bool = False
 
 
 class JudgeTemplateUpdate(SmartOJSQLModel):

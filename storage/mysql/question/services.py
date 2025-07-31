@@ -2,11 +2,39 @@ from typing import Any
 
 from ..base import MySQLService
 from sqlmodel import select
-from .models import QuestionTag, JudgeTemplate, MemoryTimeLimit, SolvingFramework, Test, Tag, Language
+from .models import (
+    QuestionTag, 
+    JudgeTemplate, 
+    MemoryTimeLimit, 
+    SolvingFramework, 
+    Test, 
+    Tag, 
+    Language,
+    Question
+)
 
 
 class QuestionService(MySQLService):
-    pass
+    async def create(self, title: str, description: str, difficulty: str, publisher_id: int):
+        question = Question(
+            title=title,
+            description=description,
+            difficulty=difficulty,
+            publisher_id=publisher_id
+        )
+        self.session.add(question)
+        await self.session.commit()
+
+    async def update(self, question_id: str, document: dict[str, Any]):
+        statement = select(Question).where(Question.id == question_id)
+        questions = await self.session.exec(statement)  # type: ignore
+        question = questions.first()
+        if question is None:
+            return
+        for field, value in document.items():
+            setattr(question, field, value)
+        self.session.add(question)
+        await self.session.commit()
 
 
 class TagService(MySQLService):
