@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from uvicorn.config import logger
 
 import settings
@@ -44,10 +45,13 @@ def custom_swagger_ui_html_endpoint():
     return custom_swagger_ui_html(
         openapi_url="/openapi.json",
         title="智能算法刷题平台-后端 API 文档",
-        swagger_ui_parameters={"persistAuthorization": True, 'withCredentials': True}
+        swagger_ui_parameters={"persistAuthorization": True, 'withCredentials': True},
+        swagger_css_url="/static/css/swagger/swagger-ui.css",
+        swagger_js_url="/static/js/swagger/swagger-ui-bundle.js"
     )
 
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(user_router, prefix="/user", tags=["用户信息相关接口"])
 app.include_router(question_router, prefix="/question")
 app.include_router(management_router, prefix="/management", tags=["后台管理系统相关接口"])

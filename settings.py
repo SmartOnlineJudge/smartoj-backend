@@ -24,7 +24,7 @@ REDIS_CONF: dict = METADATA["databases"]["redis"]
 SECRETS: dict = METADATA["secrets"]
 
 # 登录状态最大保存时间
-SESSION_MAX_AGE: int = 60 * 60 * 24
+SESSION_MAX_AGE: int = 60 * 60 * 24 * 7
 
 # MinIO 对象存储配置
 MINIO_CONF: dict = METADATA["minio"]
