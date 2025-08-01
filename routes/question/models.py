@@ -17,7 +17,7 @@ class LimitDataCreate(LimitDataBase):
 
 class FrameworkDataCreate(SmartOJSQLModel):
     code_framework: str
-    language_id: int
+    language_id: int = Field(ge=1)
 
 
 class Difficulty(str, Enum):
@@ -56,7 +56,7 @@ class LimitDataUpdate(LimitDataBase):
 
 
 class FrameworkDataUpdate(SmartOJSQLModel):
-    id: int
+    id: int = Field(ge=1)
     code_framework: str
 
 
@@ -70,7 +70,7 @@ class QuestionAddLimitData(LimitDataCreate):
 
 
 class QuestionAddFrameworkData(FrameworkDataCreate):
-    question_id: int
+    question_id: int = Field(ge=1)
 
 
 class QuestionAddTestData(SmartOJSQLModel):

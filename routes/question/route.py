@@ -287,27 +287,31 @@ async def update_memory_time_limit(
 async def solving_framework_add(
         user: CurrentUserDependency,
         service: SolvingFrameworkServiceDependency,
-        solving_framework: QuestionAddFrameworkData = Body()
+        data: QuestionAddFrameworkData
 ):
     """
     ## 参数列表说明:
-    **solving_framework**: 解题框架的基本信息模型；必须；请求体 </br>
+    **code_framework**: 解题框架代码；必须；请求体 </br>
+    **language_id**: 编程语言ID；必须；请求体 </br>
+    **question_id**: 解题框架所对应的题目ID；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
     **310**: 当前帐号权限不足 </br>
     """
-    response = await permission_detection(user=user, question_id=solving_framework.question_id)
+    solving_framework = await service.query_by_combination_index(data.question_id, data.language_id)
+    if solving_framework is not None:
+        return SmartOJResponse(ResponseCodes.SOLVING_FRAMEWORK_ALREADY_EXISTS)
+    response = await permission_detection(user=user, question_id=data.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await service.create(question_id=solving_framework.question_id, language_id=solving_framework.language_id,
-                         code_framework=solving_framework.code_framework)
+    await service.create(**data.model_dump())
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/solving-framework", summary="解题框架信息删除", tags=["解题框架"])
+@router.delete("/solving-framework", summary="解题框架信息删除", tags=["解题框架"], include_in_schema=False)
 async def solving_framework_delete(
         user: CurrentUserDependency,
         solving_framework_id: int = Body(embed=True)
@@ -335,26 +339,27 @@ async def solving_framework_delete(
 @router.put("/solving-framework", summary="解题框架信息修改", tags=["解题框架"])
 async def update_solving_framework(
         user: CurrentUserDependency,
-        solving_framework_data: FrameworkDataUpdate = Body()
+        data: FrameworkDataUpdate,
+        service: SolvingFrameworkServiceDependency
 ):
     """
     ## 参数列表说明:
-    **solving_framework_data**: 内存限制基本信息模型；必须；请求体 </br>
+    **id**: 解题框架的ID；必须；请求体 </br>
+    **code_framework**: 解题框架代码；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
     **310**: 当前帐号权限不足 </br>
     """
-    question_id = await executors.solving_framework.get_question_id_by_framework_id(solving_framework_data.id)
-    if not question_id:
+    solving_framework = await service.query_by_primary_key(data.id)
+    if solving_framework is None:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
+    response = await permission_detection(user=user, question_id=solving_framework.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.solving_framework.update_solving_framework(solving_framework_data.code_framework,
-                                                               solving_framework_data.id)
+    await service.update(data.id, data.code_framework, solving_framework)
     return SmartOJResponse(ResponseCodes.OK)
 
 

@@ -23,6 +23,7 @@ class ResponseCodes:
     # 题目响应码
     JUDGE_TEMPLATE_ALREADY_EXISTS = (500, "每个题目的每个编程语言只能有一个判题模板")
     TIME_MEMORY_LIMIT_ALREADY_EXISTS = (505, "每个题目的每个编程语言只能有一个内存时间限制")
+    SOLVING_FRAMEWORK_ALREADY_EXISTS = (510, "每个题目的每个编程语言只能有一个解题框架")
 
 
 class SmartOJResponse(BaseModel):

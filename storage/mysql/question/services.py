@@ -165,17 +165,35 @@ class LanguageService(MySQLService):
 
 
 class SolvingFrameworkService(MySQLService):
+    async def query_by_primary_key(self, solving_framework_id: int):
+        statement = select(SolvingFramework).where(SolvingFramework.id == solving_framework_id)
+        solving_frameworks = await self.session.exec(statement)
+        return solving_frameworks.first()
+
+    async def query_by_combination_index(self, question_id: int, language_id: int):
+        statement = (
+            select(SolvingFramework)
+            .where(
+                SolvingFramework.question_id == question_id, 
+                SolvingFramework.language_id == language_id
+            )
+        )
+        solving_frameworks = await self.session.exec(statement)
+        return solving_frameworks.first()
+    
     async def create(self, question_id: int, language_id: int, code_framework: str):
-        """
-        根据 question_id 增加解题框架信息
-        :param question_id: 非行 ID
-        :param language_id: 更新的解题框架所使用的编程语言信息
-        :param code_framework: 解题框架代码
-        :return:
-        """
-        solving_framework = SolvingFramework(question_id=question_id, language_id=language_id,
-                                             code_framework=code_framework)
+        solving_framework = SolvingFramework(
+            question_id=question_id, 
+            language_id=language_id,
+            code_framework=code_framework
+        )
         self.session.add(solving_framework)
+        await self.session.commit()
+    
+    async def update(self, solving_framework_id: int, code_framework: str, instance: SolvingFramework = None):
+        instance = instance or await self.query_by_primary_key(solving_framework_id)
+        instance.code_framework = code_framework
+        self.session.add(instance)
         await self.session.commit()
 
 
@@ -233,10 +251,7 @@ class JudgeTemplateService(MySQLService):
         await self.session.commit()
 
     async def update(self, judge_template_id: int, code: str, instance: JudgeTemplate = None):
-        if instance is None:
-            statement = select(JudgeTemplate).where(JudgeTemplate.id == judge_template_id)
-            judge_templates = await self.session.exec(statement)
-            instance = judge_templates.first()
+        instance = instance or await self.query_by_primary_key(judge_template_id)
         instance.code = code
         self.session.add(instance)
         await self.session.commit()
@@ -289,10 +304,7 @@ class MemoryTimeLimitService(MySQLService):
         await self.session.commit()
     
     async def update(self, memory_time_limit_id: int, time_limit: int, memory_limit: float, instance: MemoryTimeLimit = None):
-        if instance is None:
-            statement = select(MemoryTimeLimit).where(MemoryTimeLimit.id == memory_time_limit_id)
-            memory_time_limits = await self.session.exec(statement)
-            instance = memory_time_limits.first()
+        instance = instance or await self.query_by_primary_key(memory_time_limit_id)
         instance.time_limit = time_limit
         instance.memory_limit = memory_limit
         self.session.add(instance)
