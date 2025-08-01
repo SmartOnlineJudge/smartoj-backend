@@ -193,6 +193,33 @@ class TestService(MySQLService):
 
 
 class JudgeTemplateService(MySQLService):
+    async def query_by_primary_key(self, judge_template_id: int):
+        """
+        根据主键（judge_template_id）查询判题模板信息
+        :param judge_template_id: 判题模板ID
+        :return:
+        """
+        statement = select(JudgeTemplate).where(JudgeTemplate.id == judge_template_id)
+        judge_templates = await self.session.exec(statement)
+        return judge_templates.first()
+    
+    async def query_by_combination_index(self, question_id: int, language_id: int):
+        """
+        根据联合索引（question_id、language_id）查询判题模板信息
+        :param question_id: 题目ID
+        :param language_id: 查询的判题模板所使用的编程语言信息
+        :return:
+        """
+        statement = (
+            select(JudgeTemplate).
+            where(
+                JudgeTemplate.question_id == question_id,
+                JudgeTemplate.language_id == language_id
+            )
+        )
+        judge_templates = await self.session.exec(statement)
+        return judge_templates.first()
+
     async def create(self, question_id: int, language_id: int, code: str):
         """
         根据 question_id 增加判题模板信息
@@ -203,6 +230,15 @@ class JudgeTemplateService(MySQLService):
         """
         judge_template = JudgeTemplate(question_id=question_id, language_id=language_id, code=code)
         self.session.add(judge_template)
+        await self.session.commit()
+
+    async def update(self, judge_template_id: int, code: str, instance: JudgeTemplate = None):
+        if instance is None:
+            statement = select(JudgeTemplate).where(JudgeTemplate.id == judge_template_id)
+            judge_templates = await self.session.exec(statement)
+            instance = judge_templates.first()
+        instance.code = code
+        self.session.add(instance)
         await self.session.commit()
 
 

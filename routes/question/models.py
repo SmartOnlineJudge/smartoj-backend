@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import List
 from decimal import Decimal
 
 from sqlmodel import Field
@@ -15,11 +14,6 @@ class LimitDataCreate(SmartOJSQLModel):
 
 class FrameworkDataCreate(SmartOJSQLModel):
     code_framework: str
-    language_id: int
-
-
-class JudgeTemplateCreate(SmartOJSQLModel):
-    code: str
     language_id: int
 
 
@@ -43,8 +37,14 @@ class QuestionUpdate(SmartOJSQLModel):
     is_deleted: bool = False
 
 
+class JudgeTemplateCreate(SmartOJSQLModel):
+    code: str
+    language_id: int = Field(ge=1)
+    question_id: int = Field(ge=1)
+
+
 class JudgeTemplateUpdate(SmartOJSQLModel):
-    id: int
+    id: int = Field(ge=1)
     code: str
 
 

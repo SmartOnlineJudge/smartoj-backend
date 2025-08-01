@@ -16,6 +16,7 @@ from .models import (
     QuestionCreate,
     QuestionUpdate,
     JudgeTemplateUpdate,
+    JudgeTemplateCreate,
     LimitDataUpdate,
     FrameworkDataUpdate,
     TestUpdate, 
@@ -115,13 +116,11 @@ async def question_update(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.post("/judge-template", summary="题目增加判题模板信息", tags=["判题模板"])
+@router.post("/judge-template", summary="创建判题模板", tags=["判题模板"])
 async def judge_template_add(
         user: CurrentUserDependency,
         service: JudgeTemplateServiceDependency,
-        question_id: int = Body(),
-        language_id: int = Body(),
-        code: str = Body(),
+        data: JudgeTemplateCreate
 ):
     """
     ## 参数列表说明:
@@ -133,16 +132,23 @@ async def judge_template_add(
     **255**: 请求的资源不存在 </br>
     **310**: 当前帐号权限不足 </br>
     """
-    response = await permission_detection(user=user, question_id=question_id)
+    json_data = data.model_dump()
+    response = await permission_detection(user=user, question_id=json_data['question_id'])
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await service.create(question_id=question_id, language_id=language_id, code=code)
+    judge_template = await service.query_by_combination_index(
+        question_id=json_data['question_id'], 
+        language_id=json_data['language_id']
+    )
+    if judge_template is not None:
+        return SmartOJResponse(ResponseCodes.JUDGE_TEMPLATE_ALREADY_EXISTS)
+    await service.create(**json_data)
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/judge-template", summary="判题模板信息删除", tags=["判题模板"])
+@router.delete("/judge-template", summary="删除判题模板", tags=["判题模板"], include_in_schema=False)
 async def judge_template_delete(
         user: CurrentUserDependency,
         judge_template_id: int = Body(embed=True)
@@ -167,30 +173,30 @@ async def judge_template_delete(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/judge-template", summary="判题模板信息修改", tags=["判题模板"])
+@router.put("/judge-template", summary="修改判题模板", tags=["判题模板"])
 async def update_judge_template(
         user: CurrentUserDependency,
-        judge_template_data: JudgeTemplateUpdate = Body()
+        data: JudgeTemplateUpdate,
+        service: JudgeTemplateServiceDependency
 ):
     """
     ## 参数列表说明:
     **id**: 需要修改的判题模板id；必须；请求体 </br>
-    **code**: 修改后的判题模板代码；必须；请求体 </br>
+    **code**: 修改后的判题模板代码；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
     **310**: 当前帐号权限不足 </br>
     """
-    question_id = await executors.judge_template.get_question_id_by_template_id(judge_template_data.id)
-    if not question_id:
+    judge_template = await service.query_by_primary_key(data.id)
+    if judge_template is None:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
+    response = await permission_detection(user=user, question_id=judge_template.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.judge_template.update_judge_template(judge_template_data.code,
-                                                         judge_template_data.id)
+    await service.update(judge_template_id=data.id, code=data.code, instance=judge_template)
     return SmartOJResponse(ResponseCodes.OK)
 
 

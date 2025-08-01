@@ -20,6 +20,8 @@ class ResponseCodes:
     # 用户响应码
     TWICE_PASSWORD_NOT_MATCH = (400, "两次密码输入不一致")
     EMAIL_ALREADY_EXISTS = (410, "当前邮箱已被注册")
+    # 题目响应码
+    JUDGE_TEMPLATE_ALREADY_EXISTS = (500, "每个题目的每个编程语言只能有一个判题模板")
 
 
 class SmartOJResponse(BaseModel):
