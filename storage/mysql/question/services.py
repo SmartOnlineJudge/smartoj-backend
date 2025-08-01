@@ -202,6 +202,16 @@ class SolvingFrameworkService(MySQLService):
 
 
 class TestService(MySQLService):
+    async def query_by_primary_key(self, test_id: int):
+        """
+        根据主键（test_id）查询测试用例信息
+        :param test_id: 测试用例ID
+        :return:
+        """
+        statement = select(Test).where(Test.id == test_id)
+        tests = await self.session.exec(statement)
+        return tests.first()
+
     async def create(self, question_id: int, input_output: str):
         """
         根据 question_id 增加测试用例信息
@@ -211,6 +221,17 @@ class TestService(MySQLService):
         """
         test = Test(question_id=question_id, input_output=input_output)
         self.session.add(test)
+        await self.session.commit()
+    
+    async def delete(self, test_id: int):
+        test = await self.query_by_primary_key(test_id)
+        await self.session.delete(test)
+        await self.session.commit()
+    
+    async def update(self, test_id: int, input_output: str, instance: Test = None):
+        instance = instance or await self.query_by_primary_key(test_id)
+        instance.input_output = input_output
+        self.session.add(instance)
         await self.session.commit()
 
 

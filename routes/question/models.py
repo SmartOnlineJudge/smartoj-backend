@@ -61,7 +61,7 @@ class FrameworkDataUpdate(SmartOJSQLModel):
 
 
 class TestUpdate(SmartOJSQLModel):
-    id: int
+    id: int = Field(ge=1)
     input_output: str
 
 
@@ -74,7 +74,7 @@ class QuestionAddFrameworkData(FrameworkDataCreate):
 
 
 class QuestionAddTestData(SmartOJSQLModel):
-    question_id: int
+    question_id: int = Field(ge=1)
     input_output: str
 
 

@@ -367,73 +367,76 @@ async def update_solving_framework(
 async def test_add(
         user: CurrentUserDependency,
         service: TestServiceDependency,
-        test: QuestionAddTestData = Body()
+        data: QuestionAddTestData
 ):
     """
     ## 参数列表说明:
-    **test**: 测试用例的基本信息模型；必须；请求体 </br>
+    **question_id**: 题目ID；必须；请求体 </br>
+    **input_output**: 测试用例输入输出；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
+    **310**: 当前帐号权限不足
     """
-    response = await permission_detection(user=user, question_id=test.question_id)
+    response = await permission_detection(user=user, question_id=data.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await service.create(question_id=test.question_id, input_output=test.input_output)
+    await service.create(question_id=data.question_id, input_output=data.input_output)
     return SmartOJResponse(ResponseCodes.OK)
 
 
 @router.delete("/test", summary="测试用例信息删除", tags=["测试用例"])
 async def test_delete(
         user: CurrentUserDependency,
-        test_id: int = Body(embed=True)
+        service: TestServiceDependency,
+        test_id: int = Body(embed=True, ge=1)
 ):
     """
     ## 参数列表说明:
-    **test_id**: 要删除的测试用例id；必须；请求体 </br>
+    **test_id**: 要删除的测试用例ID；必须；请求体 </br>
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
+    **310**: 当前帐号权限不足
     """
-    question_id = await executors.test.get_question_id_by_test_id(test_id)
-    if not question_id:
+    test = await service.query_by_primary_key(test_id)
+    if test is None:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
+    response = await permission_detection(user=user, question_id=test.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.test.test_delete(test_id=test_id)
+    await service.delete(test_id)
     return SmartOJResponse(ResponseCodes.OK)
 
 
 @router.put("/test", summary="测试用例信息修改", tags=["测试用例"])
 async def update_test(
         user: CurrentUserDependency,
-        test: TestUpdate = Body()
+        data: TestUpdate,
+        service: TestServiceDependency
 ):
     """
     ## 参数列表说明:
-    **id**: 需要修改的测试用例信息id；必须；请求体 </br>
-    **input_output**: 修改后的输入输出；必须；请求体 </br>
+    **id**: 需要修改的测试用例信息ID；必须；请求体 </br>
+    **input_output**: 修改后的输入输出；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
+    **310**: 当前帐号权限不足
     """
-    question_id = await executors.test.get_question_id_by_test_id(test.id)
-    if not question_id:
+    test = await service.query_by_primary_key(data.id)
+    if test is None:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
+    response = await permission_detection(user=user, question_id=test.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.test.update_test(test.input_output, test.id)
+    await service.update(data.id, data.input_output, test)
     return SmartOJResponse(ResponseCodes.OK)
 
 
