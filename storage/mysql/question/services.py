@@ -95,29 +95,18 @@ class TagService(MySQLService):
 
 
 class QuestionTagService(MySQLService):
+    async def query_by_primary_key(self, question_tag_id: int):
+        statement = select(QuestionTag).where(QuestionTag.id == question_tag_id)
+        question_tag = await self.session.exec(statement)
+        return question_tag.first()
 
     async def create(self, question_id: int, tag_id: int):
-        """
-        根据 question_id 增加题目标签信息
-        :param question_id: 非行 ID
-        :param tag_id: 增加的题目标签id
-        :return:
-        """
         question_tag = QuestionTag(question_id=question_id, tag_id=tag_id)
         self.session.add(question_tag)
         await self.session.commit()
 
-    async def delete(self, question_id: int, tag_ids: list[int]):
-        """
-        根据 question_id 删除指定的id的题目标签基本信息
-        :param question_id: 非行 ID
-        :param tag_ids: 需要删除的标签id数组
-        :return:
-        """
-        statement = select(QuestionTag).where(QuestionTag.question_id == question_id, QuestionTag.tag_id.in_(tag_ids))
-        tags = await self.session.exec(statement)  # type: ignore
-        for tag in tags:
-            await self.session.delete(tag)
+    async def delete(self, instance: QuestionTag):
+        await self.session.delete(instance)
         await self.session.commit()
 
     async def update(self, question_id: int, tag_id: int, new_tag_id: int):

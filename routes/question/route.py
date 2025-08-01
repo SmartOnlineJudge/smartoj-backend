@@ -25,7 +25,6 @@ from .models import (
     QuestionAddTestData, 
     QuestionAddTag, 
     QuestionUpdateTag,
-    QuestionDeleteTag,
 )
 
 router = APIRouter()
@@ -441,26 +440,26 @@ async def update_test(
 
 
 @router.post("/question-tag", summary="题目增加题目标签信息", tags=["题目标签"])
-async def solving_framework_add(
+async def create_question_tag(
         user: CurrentUserDependency,
         service: QuestionTagServiceDependency,
-        question_tag: QuestionAddTag = Body()
+        data: QuestionAddTag
 ):
     """
     ## 参数列表说明:
     **question_id**: 需要增加标签的题目id；必须；请求体 </br>
-    **tag_id**: 增加的题目标签id；必须；请求体 </br>
+    **tag_id**: 增加的题目标签id；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
+    **310**: 当前帐号权限不足
     """
-    response = await permission_detection(user=user, question_id=question_tag.question_id)
+    response = await permission_detection(user=user, question_id=data.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await service.create(question_id=question_tag.question_id, tag_id=question_tag.tag_id)
+    await service.create(data.question_id, data.tag_id)
     return SmartOJResponse(ResponseCodes.OK)
 
 
@@ -468,27 +467,29 @@ async def solving_framework_add(
 async def question_tag_delete(
         user: CurrentUserDependency,
         service: QuestionTagServiceDependency,
-        question_tag: QuestionDeleteTag = Body()
+        question_tag_id: int = Body(embed=True, ge=1),
 ):
     """
     ## 参数列表说明:
-    **question_id**: 要删除标签的题目id；必须；请求体 </br>
-    **tag_ids**: 要删除的标签id列表；必须；请求体 </br>
+    **question_tag_id**: question_tag表的主键ID（注意不是tag表的主键ID）；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
+    **310**: 当前帐号权限不足
     """
+    question_tag = await service.query_by_primary_key(question_tag_id)
+    if question_tag is None:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
     response = await permission_detection(user=user, question_id=question_tag.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await service.delete(question_id=question_tag.question_id, tag_ids=question_tag.tag_ids)
+    await service.delete(question_tag)
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.put("/question-tag", summary="题目标签信息修改", tags=["题目标签"])
+@router.put("/question-tag", summary="题目标签信息修改", tags=["题目标签"], include_in_schema=False)
 async def question_tag_update(
         user: CurrentUserDependency,
         service: QuestionTagServiceDependency,

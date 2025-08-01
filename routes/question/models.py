@@ -79,14 +79,9 @@ class QuestionAddTestData(SmartOJSQLModel):
 
 
 class QuestionAddTag(SmartOJSQLModel):
-    question_id: int
-    tag_id: int
+    question_id: int = Field(ge=1)
+    tag_id: int = Field(ge=1)
 
 
 class QuestionUpdateTag(QuestionAddTag):
     new_tag_id: int
-
-
-class QuestionDeleteTag(SmartOJSQLModel):
-    question_id: int
-    tag_ids: list[int]
