@@ -243,6 +243,33 @@ class JudgeTemplateService(MySQLService):
 
 
 class MemoryTimeLimitService(MySQLService):
+    async def query_by_primary_key(self, memory_time_limit_id: int):
+        """
+        根据主键（memory_time_limit_id）查询内存时间限制信息
+        :param memory_time_limit_id: 内存时间限制ID
+        :return:
+        """
+        statement = select(MemoryTimeLimit).where(MemoryTimeLimit.id == memory_time_limit_id)
+        memory_time_limits = await self.session.exec(statement)
+        return memory_time_limits.first()
+
+    async def query_by_combination_index(self, question_id: int, language_id: int):
+        """
+        根据联合索引（question_id、language_id）查询内存时间限制信息
+        :param question_id: 题目ID
+        :param language_id: 查询的内存时间限制所使用的编程语言信息
+        :return:
+        """
+        statement = (
+            select(MemoryTimeLimit).
+            where(
+                MemoryTimeLimit.question_id == question_id,
+                MemoryTimeLimit.language_id == language_id
+            )
+        )
+        memory_time_limits = await self.session.exec(statement)
+        return memory_time_limits.first()
+
     async def create(self, question_id: int, language_id: int, time_limit: int, memory_limit: float):
         """
         根据 question_id 增加内存时间限制信息
@@ -252,7 +279,21 @@ class MemoryTimeLimitService(MySQLService):
         :param memory_limit: 内存限制
         :return:
         """
-        memory_time_limit = MemoryTimeLimit(question_id=question_id, language_id=language_id, time_limit=time_limit,
-                                            memory_limit=memory_limit)
+        memory_time_limit = MemoryTimeLimit(
+            question_id=question_id, 
+            language_id=language_id, 
+            time_limit=time_limit,
+            memory_limit=memory_limit
+        )
         self.session.add(memory_time_limit)
+        await self.session.commit()
+    
+    async def update(self, memory_time_limit_id: int, time_limit: int, memory_limit: float, instance: MemoryTimeLimit = None):
+        if instance is None:
+            statement = select(MemoryTimeLimit).where(MemoryTimeLimit.id == memory_time_limit_id)
+            memory_time_limits = await self.session.exec(statement)
+            instance = memory_time_limits.first()
+        instance.time_limit = time_limit
+        instance.memory_limit = memory_limit
+        self.session.add(instance)
         await self.session.commit()

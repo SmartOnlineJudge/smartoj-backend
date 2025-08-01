@@ -204,32 +204,33 @@ async def update_judge_template(
 async def memory_time_limit_add(
         user: CurrentUserDependency,
         service: MemoryTimeLimitDependency,
-        limit_data: QuestionAddLimitData = Body()
+        data: QuestionAddLimitData
 ):
     """
     ## 参数列表说明:
     **question_id**: 需要增加内存时间限制的题目id；必须；请求体 </br>
     **language_id**: 需要增加内存时间限制的编程语言；必须；请求体 </br>
-    **time_limit**: 需要增加的时间限制；必须；请求体 </br>
-    **memory_limit**: 需要增加的内存限制；必须；请求体 </br>
+    **time_limit**: 需要增加的时间限制（单位：毫秒，且必须是一个大于等于1000的整数）；必须；请求体 </br>
+    **memory_limit**: 需要增加的内存限制（单位：MB，且必须是一个大于等于1的浮点数）；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
-    **260**: 无效参数 </br>
+    **310**: 当前帐号权限不足
     """
-    response = await permission_detection(user=user, question_id=limit_data.question_id)
+    json_data = data.model_dump()
+    memory_time_limit = await service.query_by_combination_index(json_data['question_id'], json_data['language_id'])
+    if memory_time_limit is not None:
+        return SmartOJResponse(ResponseCodes.TIME_MEMORY_LIMIT_ALREADY_EXISTS)
+    response = await permission_detection(user=user, question_id=json_data['question_id'])
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await service.create(question_id=limit_data.question_id, language_id=limit_data.language_id,
-                         time_limit=limit_data.time_limit,
-                         memory_limit=limit_data.memory_limit)
+    await service.create(**json_data)
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/memory-time-limit", summary="内存时间限制信息删除", tags=["内存时间限制"])
+@router.delete("/memory-time-limit", summary="内存时间限制信息删除", tags=["内存时间限制"], include_in_schema=False)
 async def memory_time_limit_delete(
         user: CurrentUserDependency,
         memory_limits_id: int = Body(embed=True)
@@ -257,29 +258,28 @@ async def memory_time_limit_delete(
 @router.put("/memory-time-limit", summary="内存时间限制信息修改", tags=["内存时间限制"])
 async def update_memory_time_limit(
         user: CurrentUserDependency,
-        memory_time_limit_data: LimitDataUpdate = Body()
+        data: LimitDataUpdate,
+        service: MemoryTimeLimitDependency
 ):
     """
     ## 参数列表说明:
     **id**: 需要修改的内存时间限制id；必须；请求体 </br>
-    **time_limit**: 修改后的时间限制；必须；请求体 </br>
-    **memory_limit**: 修改后的内存限制；必须；请求体 </br>
+    **time_limit**: 需要修改的时间限制（单位：毫秒，且必须是一个大于等于1000的整数）；必须；请求体 </br>
+    **memory_limit**: 需要修改的内存限制（单位：MB，且必须是一个大于等于1的浮点数）；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在 </br>
-    **310**: 当前帐号权限不足 </br>
+    **310**: 当前帐号权限不足
     """
-    question_id = await executors.memory_time_limit.get_question_id_by_limits_id(memory_time_limit_data.id)
-    if not question_id:
+    memory_time_limit = await service.query_by_primary_key(data.id)
+    if memory_time_limit is None:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    response = await permission_detection(user=user, question_id=question_id[0]["question_id"])
+    response = await permission_detection(user=user, question_id=memory_time_limit.question_id)
     if response == 0:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     if response == 3:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.memory_time_limit.update_memory_limits(memory_time_limit_data.time_limit,
-                                                           memory_time_limit_data.memory_limit,
-                                                           memory_time_limit_data.id)
+    await service.update(data.id, data.time_limit, data.memory_limit, memory_time_limit)
     return SmartOJResponse(ResponseCodes.OK)
 
 

@@ -6,10 +6,13 @@ from sqlmodel import Field
 from utils.models import SmartOJSQLModel
 
 
-class LimitDataCreate(SmartOJSQLModel):
-    time_limit: int
-    memory_limit: Decimal = Field(decimal_places=2, max_digits=8)
-    language_id: int
+class LimitDataBase(SmartOJSQLModel):
+    time_limit: int = Field(ge=1000)
+    memory_limit: Decimal = Field(decimal_places=2, max_digits=8, ge=1)
+
+
+class LimitDataCreate(LimitDataBase):
+    language_id: int = Field(ge=1)
 
 
 class FrameworkDataCreate(SmartOJSQLModel):
@@ -48,10 +51,8 @@ class JudgeTemplateUpdate(SmartOJSQLModel):
     code: str
 
 
-class LimitDataUpdate(SmartOJSQLModel):
-    id: int
-    time_limit: int
-    memory_limit: float
+class LimitDataUpdate(LimitDataBase):
+    id: int = Field(ge=1)
 
 
 class FrameworkDataUpdate(SmartOJSQLModel):
@@ -65,7 +66,7 @@ class TestUpdate(SmartOJSQLModel):
 
 
 class QuestionAddLimitData(LimitDataCreate):
-    question_id: int
+    question_id: int = Field(ge=1)
 
 
 class QuestionAddFrameworkData(FrameworkDataCreate):
