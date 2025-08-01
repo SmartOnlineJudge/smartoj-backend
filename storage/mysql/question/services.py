@@ -45,8 +45,12 @@ class QuestionService(MySQLService):
             difficulty=difficulty,
             publisher_id=publisher_id
         )
+
         self.session.add(question)
         await self.session.commit()
+        await self.session.refresh(question)  # 获取该对象的最新数据
+        
+        return question.id
 
     async def update(self, question_id: str, document: dict[str, Any]):
         statement = select(Question).where(Question.id == question_id)

@@ -58,11 +58,11 @@ async def add_question_info(
     **description**: 题目描述；必须；请求体 </br>
     **difficulty**: 题目难度；必须；请求体
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功
+    **200**: 业务逻辑执行成功，并返回新增加题目的ID
     """
     user = await user_service.query_by_index("user_id", user["user_id"])
-    await question_service.create(publisher_id=user.id, **question.model_dump())
-    return SmartOJResponse(ResponseCodes.OK)
+    question_id = await question_service.create(publisher_id=user.id, **question.model_dump())
+    return SmartOJResponse(ResponseCodes.OK, data={"question_id": question_id})
 
 
 @router.delete("", summary="逻辑删除题目", tags=["题目信息"], include_in_schema=False)
