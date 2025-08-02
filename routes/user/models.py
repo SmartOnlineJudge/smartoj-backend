@@ -25,17 +25,28 @@ class LoginModel(SmartOJSQLModel):
 class UserModel(SmartOJSQLModel):
     id: int
     user_id: str
-    name: str
     email: str
     github_token: str
     qq_token: str
     is_superuser: bool
-    profile: str
-    avatar: str
     created_at: datetime
     is_deleted: bool
+
+
+class UserDynamicModel(SmartOJSQLModel):
+    name: str
+    profile: str
+    avatar: str
     grade: int
     experience: int
+
+
+class UserWithUserDynamicModel(UserModel, UserDynamicModel):
+    pass
+
+
+class UserPageModel(UserModel):
+    user_dynamic: UserDynamicModel
 
 
 class RegisterModel(SmartOJSQLModel):

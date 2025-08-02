@@ -6,7 +6,7 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
 import settings
-from ..user.models import LoginModel, UserModel
+from ..user.models import LoginModel, UserPageModel
 from ..user.route import user_logout
 from .models import Question
 from core.user.auth import authenticate
@@ -22,7 +22,6 @@ from utils.dependencies import (
     LanguageServiceDependency,
     QuestionServiceDependency
 )
-from storage.mysql import executors
 
 router = APIRouter()
 
@@ -108,6 +107,7 @@ async def update_admin_user(
 @router.get("/users", summary="分页获取用户信息")
 async def get_user_data(
         _: CurrentAdminDependency,
+        service: UserServiceDependency,
         page: int = Query(1, ge=1),
         size: int = Query(5, ge=1)
 ):
@@ -118,12 +118,16 @@ async def get_user_data(
     ## 响应代码说明:
     **200**: 业务逻辑执行成功
     """
-    users, total = await executors.user.get_page_user_data(page, size)
+    users, total = await service.query_by_page(page, size)
+
     results = []
     for user in users:
-        model = UserModel(**user)
-        result = mask(model.model_dump(), mask_id=False)
-        result["is_superuser"] = '是' if user["is_superuser"] else '否'
+        result = UserPageModel.model_validate(user)
+        result = result.model_dump()
+        user_dynamic = result.pop("user_dynamic")
+        result.update(user_dynamic)
+        result["is_superuser"] = '是' if result["is_superuser"] else '否'
+        result = mask(result, mask_id=False)
         results.append(result)
     return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
 
@@ -264,10 +268,10 @@ async def get_question_info(
 
 @router.post("/tag", summary="添加新标签")
 async def tag_add(
-        _user: CurrentAdminDependency,
+        _: CurrentAdminDependency,
         service: TagServiceDependency,
         name: str = Body(),
-        score: int = Body()
+        score: int = Body(ge=1)
 ):
     """
     ## 参数列表说明:
@@ -282,11 +286,11 @@ async def tag_add(
 
 @router.put("/tag", summary="更新标签")
 async def tag_update(
-        _user: CurrentAdminDependency,
+        _: CurrentAdminDependency,
         service: TagServiceDependency,
-        tag_id: int = Body(),
+        tag_id: int = Body(ge=1),
         name: str = Body(),
-        score: int = Body()
+        score: int = Body(ge=1)
 ):
     """
     ## 参数列表说明:
@@ -302,9 +306,9 @@ async def tag_update(
 
 @router.delete("/tag", summary="禁用标签")
 async def tag_delete(
-        _user: CurrentAdminDependency,
+        _: CurrentAdminDependency,
         service: TagServiceDependency,
-        tag_id: int = Body(),
+        tag_id: int = Body(ge=1),
         is_deleted: bool = Body()
 ):
     """
@@ -320,7 +324,7 @@ async def tag_delete(
 
 @router.post("/language", summary="添加新编程语言")
 async def language_add(
-        _user: CurrentAdminDependency,
+        _: CurrentAdminDependency,
         service: LanguageServiceDependency,
         name: str = Body(),
         version: str = Body()
@@ -338,9 +342,9 @@ async def language_add(
 
 @router.put("/language", summary="更新编程语言信息")
 async def language_update(
-        _user: CurrentAdminDependency,
+        _: CurrentAdminDependency,
         service: LanguageServiceDependency,
-        language_id: int = Body(),
+        language_id: int = Body(ge=1),
         name: str = Body(),
         version: str = Body()
 ):
@@ -358,9 +362,9 @@ async def language_update(
 
 @router.delete("/language", summary="禁用编程语言")
 async def language_delete(
-        _user: CurrentAdminDependency,
+        _: CurrentAdminDependency,
         service: LanguageServiceDependency,
-        language_id: int = Body(),
+        language_id: int = Body(ge=1),
         is_deleted: bool = Body()
 ):
     """

@@ -1,6 +1,7 @@
 import asyncio
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
@@ -78,6 +79,20 @@ class UserService(MySQLService):
             setattr(user, field, value)
         self.session.add(user)
         await self.session.commit()
+
+    async def query_by_page(self, page: int, size: int):
+        statement1 = (
+            select(User)
+            .options(selectinload(User.user_dynamic))
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        statement2 = select(func.count(User.id))
+
+        users = await self.session.exec(statement1)
+        total = await self.session.exec(statement2)
+
+        return users, total.one()
 
 
 class UserDynamicService(MySQLService):
