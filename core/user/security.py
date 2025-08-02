@@ -22,10 +22,12 @@ def password_hash(password: str, salt: str) -> str:
     return base64.b64encode(store_password).decode()
 
 
-def mask(user: dict):
+def mask(user: dict, mask_id=True):
     """隐藏用户部分敏感信息"""
     v = user["email"]
     local_part, domain = v.split("@", maxsplit=1)
     masked = "*" * 6
     user["email"] = local_part[:3] + masked + "@" + domain
+    if mask_id:
+        user.pop("id")
     return user

@@ -6,7 +6,7 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
 import settings
-from ..user.models import LoginModel, UserListModel
+from ..user.models import LoginModel, UserModel
 from ..user.route import user_logout
 from .models import Question
 from core.user.auth import authenticate
@@ -33,9 +33,7 @@ async def admin_login(request: Request, form: LoginModel):
     ## 参数列表说明:
     **email**: 管理员邮箱号；必须；请求体 </br>
     **password**: 管理员密码；必须；请求体 </br>
-    **auth_type**: 用户认证的类型（这里必须填 "password"）；必须；请求体 </br>
-    **github_token**: 可选 </br>
-    **qq_token**: 可选
+    **auth_type**: 用户认证的类型（这里必须填 "password"）；必须；请求体
     ## 响应代码说明:
     **300**: 登录成功 </br>
     **305**: 账号登录失败，可能是邮箱或密码不正确 </br>
@@ -123,8 +121,8 @@ async def get_user_data(
     users, total = await executors.user.get_page_user_data(page, size)
     results = []
     for user in users:
-        model = UserListModel(**user)
-        result = mask(model.model_dump())
+        model = UserModel(**user)
+        result = mask(model.model_dump(), mask_id=False)
         result["is_superuser"] = '是' if user["is_superuser"] else '否'
         results.append(result)
     return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})

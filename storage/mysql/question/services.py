@@ -38,6 +38,11 @@ class QuestionService(MySQLService):
 
         return questions, total
 
+    async def query_by_primary_key(self, question_id: int):
+        statement = select(Question).where(Question.id == question_id)
+        questions = await self.session.exec(statement)
+        return questions.first()
+
     async def create(self, title: str, description: str, difficulty: str, publisher_id: int):
         question = Question(
             title=title,

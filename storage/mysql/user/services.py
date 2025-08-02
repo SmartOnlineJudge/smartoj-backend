@@ -4,7 +4,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
 from ..base import MySQLService
-from .models import User, UserDynamic
+from .models import User
 
 
 class UserService(MySQLService):

@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import Column, TIMESTAMP, func
 from sqlmodel import Field, Relationship
 
+import settings
 from utils.models import SmartOJSQLModel
 
 
@@ -31,7 +32,7 @@ class UserDynamic(SmartOJSQLModel, table=True):
 
     id: int | None = Field(None, primary_key=True)
     name: str = Field(max_length=20, nullable=False)
-    avatar: str = Field("/user-avatars/default.webp",max_length=70,nullable=False)
+    avatar: str = Field(settings.DEFAULT_USER_AVATAR, max_length=70, nullable=False)
     profile: str = Field("")
     grade: int = Field(1, nullable=False)
     experience: int = Field(0, nullable=False)

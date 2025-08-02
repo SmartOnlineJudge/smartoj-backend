@@ -9,7 +9,7 @@ from fastapi.security import APIKeyCookie
 from redis.asyncio import Redis
 
 import settings
-from routes.user.models import UserOutModel
+from routes.user.models import UserModel
 from storage.cache import get_session_redis, CachePrefix
 
 
@@ -47,7 +47,7 @@ async def login(request: Request, user: dict) -> str:
     session_version = 1
     user_str = await session_redis.get(user_str_name)
     if not user_str:  # 如果用户信息不在 Redis 中，则设置用户信息
-        user_model = UserOutModel(**user)
+        user_model = UserModel(**user)
         user_dict = user_model.model_dump()
         user_dict["session_version"] = session_version  # 初始化 Session 版本号
         user_str = json.dumps(user_dict)

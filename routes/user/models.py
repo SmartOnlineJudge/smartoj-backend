@@ -22,7 +22,8 @@ class LoginModel(SmartOJSQLModel):
     auth_type: AuthType
 
 
-class UserOutModel(SmartOJSQLModel):
+class UserModel(SmartOJSQLModel):
+    id: int
     user_id: str
     name: str
     email: str
@@ -35,10 +36,6 @@ class UserOutModel(SmartOJSQLModel):
     is_deleted: bool
     grade: int
     experience: int
-
-
-class UserListModel(UserOutModel):
-    id: int
 
 
 class RegisterModel(SmartOJSQLModel):
