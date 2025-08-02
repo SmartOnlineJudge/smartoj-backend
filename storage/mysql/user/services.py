@@ -1,13 +1,52 @@
+import asyncio
 from typing import Any
 
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
+import settings
+from core.user.security import generate_user_id, password_hash
 from ..base import MySQLService
-from .models import User
+from .models import User, UserDynamic
 
 
 class UserService(MySQLService):
+    async def create_user_and_dynamic(
+        self,
+        name: str,
+        password: str = None,
+        email: str = "",
+        github_token: str = "",
+        qq_token: str = "",
+        is_superuser: bool = False,
+        profile: str = "",
+        avatar: str = ""
+    ):
+        if password is not None:
+            password = password_hash(password, settings.SECRETS["PASSWORD"])
+        user = User(
+            email=email, 
+            password=password, 
+            user_id=generate_user_id(),
+            is_superuser=is_superuser,
+            github_token=github_token,
+            qq_token=qq_token,
+        )
+        avatar = avatar or settings.DEFAULT_USER_AVATAR
+        user_dynamic = UserDynamic(name=name, profile=profile, avatar=avatar)
+
+        user.user_dynamic = user_dynamic
+
+        self.session.add(user)
+        await self.session.commit()
+
+        await asyncio.gather(
+            self.session.refresh(user),
+            self.session.refresh(user_dynamic)
+        )
+
+        return user.id, user_dynamic.id
+
     async def query_by_index(self, index: str, value: Any):
         """
         通过索引字段获取用户信息（包括动态信息）

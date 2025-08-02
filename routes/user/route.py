@@ -31,7 +31,7 @@ from utils.dependencies import (
     UserServiceDependency
 )
 from storage.oss import MAX_AVATAR_SIZE, upload_avatar
-from storage.mysql import executors, create_user_and_dynamic
+from storage.mysql import create_user_and_dynamic
 from storage.cache import CachePrefix, update_session_version
 from mq.broker import send_email_task
 
@@ -48,7 +48,8 @@ def get_user(user: CurrentUserDependency):
 async def user_register(
         request: Request,
         model: RegisterModel,
-        session_redis: SessionRedisDependency
+        session_redis: SessionRedisDependency,
+        service: UserServiceDependency
 ):
     """
     ## 参数列表说明:
@@ -66,7 +67,7 @@ async def user_register(
     if model.password1 != model.password2:
         return SmartOJResponse(ResponseCodes.TWICE_PASSWORD_NOT_MATCH)
     email = str(model.email)
-    user = await executors.user.get_user_by_email(email)
+    user = await service.query_by_index("email", email)
     if user:
         return SmartOJResponse(ResponseCodes.EMAIL_ALREADY_EXISTS)
     # 校验验证码
