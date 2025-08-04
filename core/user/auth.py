@@ -7,7 +7,7 @@ from pydantic import EmailStr
 import settings
 from storage.mysql import executors, create_user_and_dynamic
 from storage.cache import get_session_redis, CachePrefix
-from storage.oss import upload_avatar
+from storage.oss import async_upload_avatar
 from routes.user.models import AuthType
 from .security import password_hash
 from utils.generic import parse_proxy_url
@@ -102,7 +102,7 @@ class GithubOAuth2Authenticator(OAuth2Authenticator):
                 # 下载用户头像并上传到 MinIO 服务器
                 response = await client.get(github_user['avatar_url'])
                 file_type = response.headers.get('content-type').split('/')[-1]
-                hole_avatar = upload_avatar(response.content, file_type)
+                hole_avatar = await async_upload_avatar(response.content, file_type)
         # 创建新用户
         await create_user_and_dynamic(
             name=github_user['name'],

@@ -6,7 +6,6 @@ import time
 
 import filetype
 from fastapi import APIRouter, UploadFile, Body
-from fastapi.concurrency import run_in_threadpool
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
@@ -30,7 +29,7 @@ from utils.dependencies import (
     UserDynamicServiceDependency,
     UserServiceDependency
 )
-from storage.oss import MAX_AVATAR_SIZE, upload_avatar
+from storage.oss import MAX_AVATAR_SIZE, async_upload_avatar
 from storage.mysql import create_user_and_dynamic
 from storage.cache import CachePrefix, update_session_version
 from mq.broker import send_email_task
@@ -162,8 +161,8 @@ async def upload_user_avatar(
         return SmartOJResponse(ResponseCodes.FILE_TOO_LARGE)
 
     file_type = avatar.filename.rsplit(".", 1)[-1]
-
-    hole_avatar = await run_in_threadpool(upload_avatar, content, file_type, minio_client)
+    
+    hole_avatar = await async_upload_avatar(content, file_type, minio_client)
     if not hole_avatar:
         return SmartOJResponse(ResponseCodes.FILE_UPLOAD_ERROR)
 

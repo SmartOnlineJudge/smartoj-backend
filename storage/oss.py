@@ -3,6 +3,7 @@ from functools import lru_cache
 
 from minio import Minio
 from minio.error import MinioException
+from fastapi.concurrency import run_in_threadpool
 
 import settings
 from utils.generic import random_avatar_name
@@ -41,3 +42,7 @@ def upload_avatar(avatar: bytes, file_type: str, minio_client: Minio = None) -> 
     except MinioException:
         return ""
     return f"/{AVATAR_BUCKET_NAME}/{object_name}"
+
+
+async def async_upload_avatar(avatar: bytes, file_type: str, minio_client: Minio = None) -> str:
+    return await run_in_threadpool(upload_avatar, avatar, file_type, minio_client)
