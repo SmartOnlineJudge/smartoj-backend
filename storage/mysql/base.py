@@ -3,13 +3,10 @@ from typing import AsyncGenerator, Any
 from contextlib import asynccontextmanager
 
 import aiomysql
-from sqlalchemy.ext.asyncio import (
-    create_async_engine as _create_async_engine,
-    AsyncEngine
-)
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 import settings
+from .session import get_async_session
 
 
 class MySQLExecutor:
@@ -89,19 +86,17 @@ class MySQLExecutor:
 
 
 class MySQLService:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession = None):
         self.session = session
+        self.session_generator: AsyncGenerator = None
 
-
-def create_async_engine(url: str = None, **kwargs) -> AsyncEngine:
-    if url is None:
-        _MYSQL_CONF = settings.MYSQL_CONF
-        _user = _MYSQL_CONF["USER"]
-        _password = _MYSQL_CONF["PASSWORD"]
-        _host = _MYSQL_CONF["HOST"]
-        _port = _MYSQL_CONF["PORT"]
-        _database = _MYSQL_CONF["NAME"]
-        url = f"mysql+aiomysql://{_user}:{_password}@{_host}:{_port}/{_database}"
-    if "echo" not in kwargs:
-        kwargs["echo"] = settings.DEV_ENV
-    return _create_async_engine(url, **kwargs)
+    async def __aenter__(self):
+        self.session_generator = get_async_session()
+        self.session = await anext(self.session_generator)
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        try:
+            await anext(self.session_generator)
+        except StopAsyncIteration:
+            pass
