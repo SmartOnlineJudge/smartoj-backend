@@ -6,7 +6,7 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
 import settings
-from ..user.models import LoginModel, UserPageModel
+from ..user.models import LoginModel, UserOutModel
 from ..user.route import user_logout
 from .models import Question
 from core.user.auth import authenticate
@@ -122,7 +122,7 @@ async def get_user_data(
 
     results = []
     for user in users:
-        result = UserPageModel.model_validate(user)
+        result = UserOutModel.model_validate(user)
         result = result.model_dump()
         user_dynamic = result.pop("user_dynamic")
         result.update(user_dynamic)

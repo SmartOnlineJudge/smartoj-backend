@@ -9,7 +9,6 @@ from fastapi.security import APIKeyCookie
 from redis.asyncio import Redis
 
 import settings
-from routes.user.models import UserWithUserDynamicModel
 from storage.cache import get_session_redis, CachePrefix
 
 
@@ -47,10 +46,8 @@ async def login(request: Request, user: dict) -> str:
     session_version = 1
     user_str = await session_redis.get(user_str_name)
     if not user_str:  # 如果用户信息不在 Redis 中，则设置用户信息
-        user_model = UserWithUserDynamicModel(**user)
-        user_dict = user_model.model_dump()
-        user_dict["session_version"] = session_version  # 初始化 Session 版本号
-        user_str = json.dumps(user_dict)
+        user["session_version"] = session_version  # 初始化 Session 版本号
+        user_str = json.dumps(user)
     else:  # 如果用户信息在 Redis 中，则更新用户信息的过期时间
         user_dict = json.loads(user_str)
         session_version = user_dict["session_version"]  # 获取最新的 Session 版本号

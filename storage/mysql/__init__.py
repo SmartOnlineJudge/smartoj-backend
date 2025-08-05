@@ -3,7 +3,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from .base import MySQLService
 from .db_engine import engine
 from .session import get_async_session
-from .executors import MySQLExecutors
 from .user.services import UserService, UserDynamicService
 from .question.services import (
     QuestionService,
@@ -15,9 +14,6 @@ from .question.services import (
     MemoryTimeLimitService,
     SolvingFrameworkService
 )
-
-
-executors = MySQLExecutors()
 
 
 async def create_user_and_dynamic(

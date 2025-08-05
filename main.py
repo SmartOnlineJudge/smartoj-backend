@@ -7,22 +7,19 @@ from uvicorn.config import logger
 
 import settings
 from routes import user_router, question_router, management_router
-from storage.mysql import executors, engine
+from storage.mysql import engine
 from storage.cache import close_cache_connections
 from mq.broker import broker
 from utils.openapi.docs import custom_swagger_ui_html
 
 
 async def on_startup():
-    logger.info("Creating MySQL connection")
-    await executors.initialize()
     logger.info("Creating RabbitMQ connection")
     await broker.startup()
 
 
 async def on_shutdown():
     logger.info("Disconnecting with MySQL")
-    await executors.destroy()
     await engine.dispose()
     logger.info("Disconnecting with RabbitMQ")
     await broker.shutdown()

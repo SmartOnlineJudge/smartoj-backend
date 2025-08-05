@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Body
 
-from storage.mysql import executors
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.dependencies import (
     CurrentUserDependency, 
@@ -132,25 +131,6 @@ async def judge_template_add(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/judge-template", summary="删除判题模板", tags=["判题模板"], include_in_schema=False)
-async def judge_template_delete(
-        _: CurrentUserDependency,
-        judge_template_id: int = Body(embed=True)
-):
-    """
-    ## 参数列表说明:
-    **judge_template_id**: 要删除的判题模板id；必须；请求体 </br>
-    ## 响应代码说明:
-    **200**: 业务逻辑执行成功 </br>
-    **255**: 请求的资源不存在
-    """
-    question_id = await executors.judge_template.get_question_id_by_template_id(judge_template_id)
-    if not question_id:
-        return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.judge_template.judge_template_delete(judge_template_id=judge_template_id)
-    return SmartOJResponse(ResponseCodes.OK)
-
-
 @router.put("/judge-template", summary="修改判题模板", tags=["判题模板"])
 async def update_judge_template(
         _: CurrentUserDependency,
@@ -196,25 +176,6 @@ async def memory_time_limit_add(
     return SmartOJResponse(ResponseCodes.OK)
 
 
-@router.delete("/memory-time-limit", summary="内存时间限制信息删除", tags=["内存时间限制"], include_in_schema=False)
-async def memory_time_limit_delete(
-        _: CurrentUserDependency,
-        memory_limits_id: int = Body(embed=True)
-):
-    """
-    ## 参数列表说明:
-    **memory_limits_id**: 要删除的内存时间限制id；必须；请求体 </br>
-    ## 响应代码说明:
-    **200**: 业务逻辑执行成功 </br>
-    **255**: 请求的资源不存在
-    """
-    question_id = await executors.memory_time_limit.get_question_id_by_limits_id(memory_limits_id)
-    if not question_id:
-        return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.memory_time_limit.memory_limits_delete(memory_limits_id=memory_limits_id)
-    return SmartOJResponse(ResponseCodes.OK)
-
-
 @router.put("/memory-time-limit", summary="内存时间限制信息修改", tags=["内存时间限制"])
 async def update_memory_time_limit(
         _: CurrentUserDependency,
@@ -256,25 +217,6 @@ async def solving_framework_add(
     if solving_framework is not None:
         return SmartOJResponse(ResponseCodes.SOLVING_FRAMEWORK_ALREADY_EXISTS)
     await service.create(**data.model_dump())
-    return SmartOJResponse(ResponseCodes.OK)
-
-
-@router.delete("/solving-framework", summary="解题框架信息删除", tags=["解题框架"], include_in_schema=False)
-async def solving_framework_delete(
-        _: CurrentUserDependency,
-        solving_framework_id: int = Body(embed=True)
-):
-    """
-    ## 参数列表说明:
-    **solving_framework_id**: 要删除的解题框架id；必须；请求体 </br>
-    ## 响应代码说明:
-    **200**: 业务逻辑执行成功 </br>
-    **255**: 请求的资源不存在
-    """
-    question_id = await executors.solving_framework.get_question_id_by_framework_id(solving_framework_id)
-    if not question_id:
-        return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await executors.solving_framework.solving_framework_delete(solving_framework_id=solving_framework_id)
     return SmartOJResponse(ResponseCodes.OK)
 
 

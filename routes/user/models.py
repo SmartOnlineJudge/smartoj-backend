@@ -41,11 +41,7 @@ class UserDynamicModel(SmartOJSQLModel):
     experience: int
 
 
-class UserWithUserDynamicModel(UserModel, UserDynamicModel):
-    pass
-
-
-class UserPageModel(UserModel):
+class UserOutModel(UserModel):
     user_dynamic: UserDynamicModel
 
 
