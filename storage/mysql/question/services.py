@@ -105,10 +105,17 @@ class QuestionTagService(MySQLService):
         question_tag = await self.session.exec(statement)
         return question_tag.first()
 
+    async def query_by_combination_index(self, question_id: int, tag_id: int):
+        statement = select(QuestionTag).where(QuestionTag.question_id == question_id, QuestionTag.tag_id == tag_id)
+        question_tag = await self.session.exec(statement)
+        return question_tag.first()
+
     async def create(self, question_id: int, tag_id: int):
         question_tag = QuestionTag(question_id=question_id, tag_id=tag_id)
         self.session.add(question_tag)
         await self.session.commit()
+        await self.session.refresh(question_tag)
+        return question_tag.id
 
     async def delete(self, instance: QuestionTag):
         await self.session.delete(instance)
@@ -187,6 +194,8 @@ class SolvingFrameworkService(MySQLService):
         )
         self.session.add(solving_framework)
         await self.session.commit()
+        await self.session.refresh(solving_framework)
+        return solving_framework.id
     
     async def update(self, solving_framework_id: int, code_framework: str, instance: SolvingFramework = None):
         instance = instance or await self.query_by_primary_key(solving_framework_id)
@@ -216,6 +225,8 @@ class TestService(MySQLService):
         test = Test(question_id=question_id, input_output=input_output)
         self.session.add(test)
         await self.session.commit()
+        await self.session.refresh(test)
+        return test.id
     
     async def delete(self, test_id: int):
         test = await self.query_by_primary_key(test_id)
@@ -268,6 +279,8 @@ class JudgeTemplateService(MySQLService):
         judge_template = JudgeTemplate(question_id=question_id, language_id=language_id, code=code)
         self.session.add(judge_template)
         await self.session.commit()
+        await self.session.refresh(judge_template)
+        return judge_template.id
 
     async def update(self, judge_template_id: int, code: str, instance: JudgeTemplate = None):
         instance = instance or await self.query_by_primary_key(judge_template_id)
@@ -321,6 +334,8 @@ class MemoryTimeLimitService(MySQLService):
         )
         self.session.add(memory_time_limit)
         await self.session.commit()
+        await self.session.refresh(memory_time_limit)
+        return memory_time_limit.id
     
     async def update(self, memory_time_limit_id: int, time_limit: int, memory_limit: float, instance: MemoryTimeLimit = None):
         instance = instance or await self.query_by_primary_key(memory_time_limit_id)

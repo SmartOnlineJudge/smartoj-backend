@@ -117,7 +117,7 @@ async def judge_template_add(
     **language_id**: 需要增加判题模板的编程语言；必须；请求体 </br>
     **code**: 需要增加判题模板的代码；必须；请求体 </br>
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功 </br>
+    **200**: 业务逻辑执行成功，并返回新增加的判题模板ID </br>
     **500**: 每个题目的每个编程语言只能有一个判题模板
     """
     json_data = data.model_dump()
@@ -127,8 +127,8 @@ async def judge_template_add(
     )
     if judge_template is not None:
         return SmartOJResponse(ResponseCodes.JUDGE_TEMPLATE_ALREADY_EXISTS)
-    await service.create(**json_data)
-    return SmartOJResponse(ResponseCodes.OK)
+    judge_template_id = await service.create(**json_data)
+    return SmartOJResponse(ResponseCodes.OK, data={"judge_template_id": judge_template_id})
 
 
 @router.put("/judge-template", summary="修改判题模板", tags=["判题模板"])
@@ -165,15 +165,15 @@ async def memory_time_limit_add(
     **time_limit**: 需要增加的时间限制（单位：毫秒，且必须是一个大于等于1000的整数）；必须；请求体 </br>
     **memory_limit**: 需要增加的内存限制（单位：MB，且必须是一个大于等于1的浮点数）；必须；请求体
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功 </br>
+    **200**: 业务逻辑执行成功，并返回新增加的内存时间限制ID </br>
     **505**: 每个题目的每个编程语言只能有一个内存时间限制
     """
     json_data = data.model_dump()
     memory_time_limit = await service.query_by_combination_index(json_data['question_id'], json_data['language_id'])
     if memory_time_limit is not None:
         return SmartOJResponse(ResponseCodes.TIME_MEMORY_LIMIT_ALREADY_EXISTS)
-    await service.create(**json_data)
-    return SmartOJResponse(ResponseCodes.OK)
+    memory_time_limit_id = await service.create(**json_data)
+    return SmartOJResponse(ResponseCodes.OK, data={"memory_time_limit_id": memory_time_limit_id})
 
 
 @router.put("/memory-time-limit", summary="内存时间限制信息修改", tags=["内存时间限制"])
@@ -210,14 +210,14 @@ async def solving_framework_add(
     **language_id**: 编程语言ID；必须；请求体 </br>
     **question_id**: 解题框架所对应的题目ID；必须；请求体
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功 </br>
+    **200**: 业务逻辑执行成功，并返回新增加的解题框架ID </br>
     **510**: 每个题目的每个编程语言只能有一个解题框架
     """
     solving_framework = await service.query_by_combination_index(data.question_id, data.language_id)
     if solving_framework is not None:
         return SmartOJResponse(ResponseCodes.SOLVING_FRAMEWORK_ALREADY_EXISTS)
-    await service.create(**data.model_dump())
-    return SmartOJResponse(ResponseCodes.OK)
+    solving_framework_id = await service.create(**data.model_dump())
+    return SmartOJResponse(ResponseCodes.OK, data={"solving_framework_id": solving_framework_id})
 
 
 @router.put("/solving-framework", summary="解题框架信息修改", tags=["解题框架"])
@@ -252,10 +252,10 @@ async def test_add(
     **question_id**: 题目ID；必须；请求体 </br>
     **input_output**: 测试用例输入输出；必须；请求体
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功
+    **200**: 业务逻辑执行成功，并返回新增加的测试用例ID
     """
-    await service.create(question_id=data.question_id, input_output=data.input_output)
-    return SmartOJResponse(ResponseCodes.OK)
+    test_id = await service.create(question_id=data.question_id, input_output=data.input_output)
+    return SmartOJResponse(ResponseCodes.OK, data={"test_id": test_id})
 
 
 @router.delete("/test", summary="测试用例信息删除", tags=["测试用例"])
@@ -310,10 +310,13 @@ async def create_question_tag(
     **question_id**: 需要增加标签的题目id；必须；请求体 </br>
     **tag_id**: 增加的题目标签id；必须；请求体
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功
+    **200**: 业务逻辑执行成功，并返回新增加的内存标签ID（question_tag表中的主键）
     """
-    await service.create(data.question_id, data.tag_id)
-    return SmartOJResponse(ResponseCodes.OK)
+    question_tag = await service.query_by_combination_index(data.question_id, data.tag_id)
+    if question_tag is not None:
+        return SmartOJResponse(ResponseCodes.QUESTION_TAG_ALREADY_EXISTS)
+    question_tag_id = await service.create(data.question_id, data.tag_id)
+    return SmartOJResponse(ResponseCodes.OK, data={"question_tag_id": question_tag_id})
 
 
 @router.delete("/question-tag", summary="题目标签信息删除", tags=["题目标签"])
