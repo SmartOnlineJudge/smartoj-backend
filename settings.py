@@ -41,3 +41,6 @@ DEFAULT_USER_AVATAR: str = "/user-avatars/default.webp"
 # 请求代理地址
 # 后端向 GitHub 发送请求的时候会用到
 PROXY_URL = "socks5://127.0.0.1:1080"
+
+# 代码沙箱判题接口地址
+CODESANDBOX_URL = "http://127.0.0.1:8080/sandbox/judgement"

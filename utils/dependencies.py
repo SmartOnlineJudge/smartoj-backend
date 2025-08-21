@@ -17,7 +17,9 @@ from utils.service_registry import (
     get_question_tag_service,
     get_solving_framework_service,
     get_judge_template_service,
-    get_memory_time_limit_service
+    get_memory_time_limit_service,
+    get_judge_record_service,
+    get_submit_record_service
 )
 from storage.mysql import (
     get_async_session,
@@ -30,7 +32,9 @@ from storage.mysql import (
     TestService,
     SolvingFrameworkService,
     MemoryTimeLimitService,
-    UserDynamicService
+    UserDynamicService,
+    SubmitRecordService,
+    JudgeRecordService
 )
 from storage.cache import get_session_redis, get_default_redis, Redis
 from storage.oss import get_minio_client, Minio
@@ -59,3 +63,5 @@ LanguageServiceDependency = Annotated[LanguageService, Depends(get_language_serv
 TestServiceDependency = Annotated[TestService, Depends(get_test_service)]
 SolvingFrameworkServiceDependency = Annotated[SolvingFrameworkService, Depends(get_solving_framework_service)]
 MemoryTimeLimitDependency = Annotated[MemoryTimeLimitService, Depends(get_memory_time_limit_service)]
+SubmitRecordDependency = Annotated[SubmitRecordService, Depends(get_submit_record_service)]
+JudgeRecordDependency = Annotated[JudgeRecordService, Depends(get_judge_record_service)]

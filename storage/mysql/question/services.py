@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlmodel import select
+from sqlmodel import select, text
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func
 
@@ -14,7 +14,9 @@ from .models import (
     Test, 
     Tag, 
     Language,
-    Question
+    Question,
+    SubmitRecord,
+    JudgeRecord
 )
 
 
@@ -66,6 +68,27 @@ class QuestionService(MySQLService):
         for field, value in document.items():
             setattr(question, field, value)
         self.session.add(question)
+        await self.session.commit()
+
+    async def increment_submission_and_pass_quantity(
+        self, 
+        question_id: int,
+        increment_pass_quantity: bool = False
+    ):
+        if increment_pass_quantity:
+            sql = """
+                UPDATE question
+                SET submission_quantity = submission_quantity + 1,
+                    pass_quantity = pass_quantity + 1
+                WHERE id = :question_id
+            """
+        else:
+            sql = """
+                UPDATE question
+                SET submission_quantity = submission_quantity + 1
+                WHERE id = :question_id
+            """
+        await self.session.exec(text(sql), params={"question_id": question_id})
         await self.session.commit()
 
 
@@ -140,6 +163,11 @@ class QuestionTagService(MySQLService):
 
 
 class LanguageService(MySQLService):
+    async def query_by_primary_key(self, language_id: int):
+        statement = select(Language).where(Language.id == language_id)
+        language = await self.session.exec(statement)
+        return language.first()
+
     async def create(self, name: str, version: str):
         """
         增加新编程语言
@@ -214,6 +242,16 @@ class TestService(MySQLService):
         statement = select(Test).where(Test.id == test_id)
         tests = await self.session.exec(statement)
         return tests.first()
+
+    async def query_by_question_id(self, question_id: int):
+        """
+        根据问题ID查询测试用例信息
+        :param question_id: 问题ID
+        :return:
+        """
+        statement = select(Test).where(Test.question_id == question_id)
+        tests = await self.session.exec(statement)
+        return tests.all()
 
     async def create(self, question_id: int, input_output: str):
         """
@@ -342,4 +380,45 @@ class MemoryTimeLimitService(MySQLService):
         instance.time_limit = time_limit
         instance.memory_limit = memory_limit
         self.session.add(instance)
+        await self.session.commit()
+
+
+class SubmitRecordService(MySQLService):
+    async def query_by_primary_key(self, submit_record_id: int):
+        statement = select(SubmitRecord).where(SubmitRecord.id == submit_record_id)
+        submit_records = await self.session.exec(statement)
+        return submit_records.first()
+
+    async def create(
+        self, 
+        code: str, 
+        judge_type: str, 
+        question_id: int, 
+        user_id: int, 
+        language_id: int
+    ):
+        submit_record = SubmitRecord(
+            code=code,
+            type=judge_type,
+            question_id=question_id,
+            user_id=user_id,
+            language_id=language_id
+        )
+        self.session.add(submit_record)
+        await self.session.commit()
+        await self.session.refresh(submit_record)
+        return submit_record.id
+
+    async def update(self, submit_record_id: int, document: dict):
+        submit_record = await self.session.get(SubmitRecord, submit_record_id)
+        for key, value in document.items():
+            setattr(submit_record, key, value)
+        self.session.add(submit_record)
+        await self.session.commit()
+
+
+class JudgeRecordService(MySQLService):
+    async def create_many(self, judge_records: list[dict]):
+        _judge_records = [JudgeRecord(**judge_record) for judge_record in judge_records]
+        self.session.add_all(_judge_records)
         await self.session.commit()

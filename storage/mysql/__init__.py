@@ -12,7 +12,9 @@ from .question.services import (
     TestService,
     JudgeTemplateService,
     MemoryTimeLimitService,
-    SolvingFrameworkService
+    SolvingFrameworkService,
+    SubmitRecordService,
+    JudgeRecordService
 )
 
 
