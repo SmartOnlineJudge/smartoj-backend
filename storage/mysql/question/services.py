@@ -243,15 +243,19 @@ class TestService(MySQLService):
         tests = await self.session.exec(statement)
         return tests.first()
 
-    async def query_by_question_id(self, question_id: int):
+    async def query_by_question_id(self, question_id: int, judge_type: str = "submit"):
         """
         根据问题ID查询测试用例信息
         :param question_id: 问题ID
+        :param judge_type: 判题的类型（submit / test）
         :return:
         """
-        statement = select(Test).where(Test.question_id == question_id)
+        statement = select(Test).where(Test.question_id == question_id).order_by(Test.id)
         tests = await self.session.exec(statement)
-        return tests.all()
+        all_tests = tests.all()
+        if judge_type == "submit":
+            return all_tests
+        return all_tests[:3]
 
     async def create(self, question_id: int, input_output: str):
         """

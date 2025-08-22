@@ -52,7 +52,7 @@ async def call_codesandbox_task(
             memory_time_limit_service.query_by_combination_index(question_id, language_id),
             language_service.query_by_primary_key(language_id),
             judge_template_service.query_by_combination_index(question_id, language_id),
-            test_service.query_by_question_id(question_id)
+            test_service.query_by_question_id(question_id, judge_type)
         )
     _tests = [{"test_id": test.id, "input_output": test.input_output} for test in tests]
 
