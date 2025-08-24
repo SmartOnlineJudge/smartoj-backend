@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from sqlmodel import Field
 
+from routes.management.models import Test, SolvingFramework, QuestionTag
 from utils.models import SmartOJSQLModel
 
 
@@ -85,3 +86,15 @@ class QuestionAddTag(SmartOJSQLModel):
 
 class QuestionUpdateTag(QuestionAddTag):
     new_tag_id: int
+
+
+class QuestionOnlineJudge(SmartOJSQLModel):
+    id: int
+    title: str
+    description: str
+    difficulty: str
+    submission_quantity: int
+    pass_quantity: int
+    tags: list[QuestionTag]
+    tests: list[Test]
+    solving_frameworks: list[SolvingFramework]

@@ -14,9 +14,7 @@ from .models import (
     Test, 
     Tag, 
     Language,
-    Question,
-    SubmitRecord,
-    JudgeRecord
+    Question
 )
 
 
@@ -40,8 +38,17 @@ class QuestionService(MySQLService):
 
         return questions, total
 
-    async def query_by_primary_key(self, question_id: int):
-        statement = select(Question).where(Question.id == question_id)
+    async def query_by_primary_key(self, question_id: int, online_judge: bool = False):
+        if online_judge:
+            statement = (
+                select(Question)
+                .where(Question.id == question_id)
+                .options(selectinload(Question.tests))
+                .options(selectinload(Question.solving_frameworks).selectinload(SolvingFramework.language))
+                .options(selectinload(Question.tags).selectinload(QuestionTag.tag))
+            )
+        else:
+            statement = select(Question).where(Question.id == question_id)
         questions = await self.session.exec(statement)
         return questions.first()
 
@@ -384,45 +391,4 @@ class MemoryTimeLimitService(MySQLService):
         instance.time_limit = time_limit
         instance.memory_limit = memory_limit
         self.session.add(instance)
-        await self.session.commit()
-
-
-class SubmitRecordService(MySQLService):
-    async def query_by_primary_key(self, submit_record_id: int):
-        statement = select(SubmitRecord).where(SubmitRecord.id == submit_record_id)
-        submit_records = await self.session.exec(statement)
-        return submit_records.first()
-
-    async def create(
-        self, 
-        code: str, 
-        judge_type: str, 
-        question_id: int, 
-        user_id: int, 
-        language_id: int
-    ):
-        submit_record = SubmitRecord(
-            code=code,
-            type=judge_type,
-            question_id=question_id,
-            user_id=user_id,
-            language_id=language_id
-        )
-        self.session.add(submit_record)
-        await self.session.commit()
-        await self.session.refresh(submit_record)
-        return submit_record.id
-
-    async def update(self, submit_record_id: int, document: dict):
-        submit_record = await self.session.get(SubmitRecord, submit_record_id)
-        for key, value in document.items():
-            setattr(submit_record, key, value)
-        self.session.add(submit_record)
-        await self.session.commit()
-
-
-class JudgeRecordService(MySQLService):
-    async def create_many(self, judge_records: list[dict]):
-        _judge_records = [JudgeRecord(**judge_record) for judge_record in judge_records]
-        self.session.add_all(_judge_records)
         await self.session.commit()

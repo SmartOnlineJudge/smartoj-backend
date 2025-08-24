@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Query
 
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.dependencies import (
@@ -23,6 +23,7 @@ from .models import (
     QuestionAddTestData, 
     QuestionAddTag, 
     QuestionUpdateTag,
+    QuestionOnlineJudge
 )
 
 router = APIRouter()
@@ -356,3 +357,20 @@ async def question_tag_update(
     await service.update(question_id=question_tag.question_id, tag_id=question_tag.tag_id,
                          new_tag_id=question_tag.new_tag_id)
     return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.get("/online-solving", summary="查询在线刷题时所需的题目信息", tags=["题目信息"])
+async def query_online_solving_question_info(
+    service: QuestionServiceDependency,
+    question_id: int = Query(ge=1)
+):
+    """
+    ## 参数列表说明:
+    **question_id**: 当前题目ID；必须；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    question = await service.query_by_primary_key(question_id, online_judge=True)
+    question.tests = question.tests[:3]
+    question = QuestionOnlineJudge.model_validate(question)
+    return SmartOJResponse(ResponseCodes.OK, data=question)
