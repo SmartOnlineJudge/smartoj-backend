@@ -368,9 +368,12 @@ async def query_online_solving_question_info(
     ## 参数列表说明:
     **question_id**: 当前题目ID；必须；查询参数
     ## 响应代码说明:
-    **200**: 业务逻辑执行成功
+    **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在
     """
     question = await service.query_by_primary_key(question_id, online_judge=True)
+    if question is None:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
     question.tests = question.tests[:3]
     question = QuestionOnlineJudge.model_validate(question)
     return SmartOJResponse(ResponseCodes.OK, data=question)
