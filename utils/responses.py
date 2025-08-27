@@ -13,6 +13,7 @@ class ResponseCodes:
     REQUEST_FREQUENTLY = (240, "请求过于频繁，请稍后再试")
     CAPTCHA_INVALID = (250, "验证码错误或已过期")
     NOT_FOUND = (255, "请求的资源不存在")
+    PARAMS_ERROR = (260, "请求参数错误")
     # 后台管理响应码
     LOGIN_SUCCESS = (300, "登录成功")
     LOGIN_FAILED = (305, "登录失败")

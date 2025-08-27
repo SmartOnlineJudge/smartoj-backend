@@ -37,16 +37,28 @@ async def judge(
 async def query_submit_record(
     user: CurrentUserDependency,
     service: SubmitRecordDependency,
-    submit_record_id: int = Query(1, ge=1)
+    submit_record_id: int = Query(None, ge=1),
+    question_id: int = Query(None, ge=1),
 ):
     """
-    ## 参数列表说明:
-    **submit_record_id**: 提交记录的ID；必须；查询参数
+    ## 参数列表说明（以下两个参数只能选择其中一个传递，不能两者同时传递且不能两者都为空）:
+    **submit_record_id**: 提交记录的ID；可选；查询参数 </br>
+    **question_id**: 题目的ID；可选；查询参数
     ## 响应代码说明:
     **200**: 业务逻辑执行成功，并返回本次提交记录的ID </br>
     **255**: 请求的资源不存在 </br>
-    **310**: 当前账号权限不足
+    **310**: 当前账号权限不足 </br>
+    **260**: 请求参数错误
     """
+    if question_id is None and submit_record_id is None:
+        return SmartOJResponse(ResponseCodes.PARAMS_ERROR)
+    if question_id is not None:
+        submit_records = await service.query_by_user_and_question_id(user["id"], question_id)
+        results = []
+        for submit_record in submit_records:
+            submit_record = submit_record.model_dump(exclude={"user_id"})
+            results.append(submit_record)
+        return SmartOJResponse(ResponseCodes.OK, data=results)
     submit_record = await service.query_by_primary_key(submit_record_id)
     if submit_record is None:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)

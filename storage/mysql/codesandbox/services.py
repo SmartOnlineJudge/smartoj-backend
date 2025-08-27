@@ -10,6 +10,14 @@ class SubmitRecordService(MySQLService):
         submit_records = await self.session.exec(statement)
         return submit_records.first()
 
+    async def query_by_user_and_question_id(self, user_id: int, question_id: int):
+        statement = select(SubmitRecord).where(
+            SubmitRecord.user_id == user_id,
+            SubmitRecord.question_id == question_id
+        )
+        submit_records = await self.session.exec(statement)
+        return submit_records.all()
+
     async def create(
         self, 
         code: str, 
