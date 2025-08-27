@@ -170,6 +170,11 @@ class QuestionTagService(MySQLService):
 
 
 class LanguageService(MySQLService):
+    async def query_all(self):
+        statement = select(Language)
+        languages = await self.session.exec(statement)
+        return languages.all()
+
     async def query_by_primary_key(self, language_id: int):
         statement = select(Language).where(Language.id == language_id)
         language = await self.session.exec(statement)

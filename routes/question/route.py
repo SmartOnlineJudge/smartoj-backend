@@ -8,7 +8,8 @@ from utils.dependencies import (
     MemoryTimeLimitDependency, 
     SolvingFrameworkServiceDependency, 
     TestServiceDependency,
-    QuestionServiceDependency
+    QuestionServiceDependency,
+    LanguageServiceDependency
 )
 from .models import (
     QuestionCreate,
@@ -377,3 +378,13 @@ async def query_online_solving_question_info(
     question.tests = question.tests[:3]
     question = QuestionOnlineJudge.model_validate(question)
     return SmartOJResponse(ResponseCodes.OK, data=question)
+
+
+@router.get("/languages", summary="查询所有编程语言信息", tags=["编程语言"])
+async def query_languages(service: LanguageServiceDependency):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    languages = await service.query_all()
+    return SmartOJResponse(ResponseCodes.OK, data=languages)
