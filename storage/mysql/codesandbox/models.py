@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from sqlmodel import Field
+from sqlmodel import Field, Relationship
 from sqlalchemy import Column, TIMESTAMP, func
 
+from ..question.models import Test
 from utils.models import SmartOJSQLModel
 
 
@@ -41,3 +42,4 @@ class JudgeRecord(SmartOJSQLModel, table=True):
     status: int = Field(nullable=False)
     submit_record_id: int = Field(nullable=False, index=True, foreign_key="submit_record.id")
     test_id: int = Field(nullable=False, index=True, foreign_key="test.id")
+    test: Test = Relationship()

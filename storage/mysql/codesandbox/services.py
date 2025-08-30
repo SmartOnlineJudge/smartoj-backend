@@ -1,7 +1,8 @@
 from sqlmodel import select
+from sqlalchemy.orm import selectinload
 
 from ..base import MySQLService
-from .models import SubmitRecord, JudgeRecord
+from .models import SubmitRecord, JudgeRecord, Test
 
 
 class SubmitRecordService(MySQLService):
@@ -52,7 +53,14 @@ class JudgeRecordService(MySQLService):
         self.session.add_all(_judge_records)
         await self.session.commit()
 
-    async def query_by_submit_record_id(self, submit_record_id: int):
-        statement = select(JudgeRecord).where(JudgeRecord.submit_record_id == submit_record_id)
+    async def query_by_submit_record_id(self, submit_record_id: int, require_input_output: bool = False):
+        if require_input_output:
+            statement = (
+                select(JudgeRecord)
+                .where(JudgeRecord.submit_record_id == submit_record_id)
+                .options(selectinload(JudgeRecord.test))
+            )
+        else:
+            statement = select(JudgeRecord).where(JudgeRecord.submit_record_id == submit_record_id)
         judge_records = await self.session.exec(statement)
         return judge_records.all()

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Query
 from mq.broker import call_codesandbox_task
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.dependencies import CurrentUserDependency, SubmitRecordDependency, JudgeRecordDependency
-from .models import JudgeModel
+from .models import JudgeModel, JudgeRecordModel, JudgeRecordWithTestModel
 
 router = APIRouter()
 
@@ -73,11 +73,13 @@ async def query_judge_record(
     user: CurrentUserDependency,
     submit_record_service: SubmitRecordDependency,
     judge_record_service: JudgeRecordDependency,
-    submit_record_id: int = Query(1, ge=1)
+    submit_record_id: int = Query(1, ge=1),
+    require_input_output: bool = Query(False)
 ):
     """
     ## 参数列表说明:
-    **submit_record_id**: 提交记录的ID；必须；查询参数
+    **submit_record_id**: 提交记录的ID；必须；查询参数 </br>
+    **require_input_output**: 是否需要返回测试用例的输入输出信息；可选；查询参数
     ## 响应代码说明:
     **200**: 业务逻辑执行成功，并返回本次提交记录的ID </br>
     **255**: 请求的资源不存在 </br>
@@ -88,8 +90,11 @@ async def query_judge_record(
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
     if submit_record.user_id != user["id"]:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
-    judge_records = await judge_record_service.query_by_submit_record_id(submit_record_id)
+    judge_records = await judge_record_service.query_by_submit_record_id(submit_record_id, require_input_output)
+    results = []
+    validate_model = JudgeRecordWithTestModel if require_input_output else JudgeRecordModel
     for judge_record in judge_records:
         if judge_record.status == -2:
             judge_record.result = "系统判题异常"
-    return SmartOJResponse(ResponseCodes.OK, data=judge_records)
+        results.append(validate_model.model_validate(judge_record))
+    return SmartOJResponse(ResponseCodes.OK, data=results)
