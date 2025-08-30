@@ -26,8 +26,8 @@ class JudgeRecordModel(SmartOJSQLModel):
     submit_record_id: int = Field(ge=1)
     criterion: str
     id: int = Field(ge=1)
-    time_consumed: int = Field(ge=1)
-    status: int = Field(ge=1)
+    time_consumed: int
+    status: int
     test_id: int = Field(ge=1)
 
 
