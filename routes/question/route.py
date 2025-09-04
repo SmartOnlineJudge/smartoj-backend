@@ -9,7 +9,8 @@ from utils.dependencies import (
     SolvingFrameworkServiceDependency, 
     TestServiceDependency,
     QuestionServiceDependency,
-    LanguageServiceDependency
+    LanguageServiceDependency,
+    TagServiceDependency
 )
 from .models import (
     QuestionCreate,
@@ -388,3 +389,22 @@ async def query_languages(service: LanguageServiceDependency):
     """
     languages = await service.query_all()
     return SmartOJResponse(ResponseCodes.OK, data=languages)
+
+
+@router.get("/tags", summary="查询所有标签信息", tags=["题目标签"])
+async def query_tags(service: TagServiceDependency, require_question_count: bool = Query(False)):
+    """
+    ## 参数列表说明:
+    **require_question_count**: 是否需要查询标签所对应的题目数量；可选；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    tags = await service.query_all(require_question_count)
+    if not require_question_count:
+        return SmartOJResponse(ResponseCodes.OK, data=tags)
+    results = []
+    for tag, question_count in tags:
+        result = tag.model_dump()
+        result["question_count"] = question_count
+        results.append(result)
+    return SmartOJResponse(ResponseCodes.OK, data=results)

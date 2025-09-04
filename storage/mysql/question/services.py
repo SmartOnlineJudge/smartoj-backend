@@ -100,6 +100,22 @@ class QuestionService(MySQLService):
 
 
 class TagService(MySQLService):
+    async def query_all(self, require_question_count: bool = False):
+        if require_question_count:
+            statement = (
+                select(
+                    Tag,
+                    func.count(QuestionTag.question_id).label("question_count")
+                )
+                .join(QuestionTag, Tag.id == QuestionTag.tag_id, isouter=True)
+                .group_by(Tag.id)
+                .order_by(Tag.score)
+            )
+        else:
+            statement = select(Tag)
+        tags = await self.session.exec(statement)
+        return tags.all()
+
     async def create(self, name: str, score: int):
         """
         增加新标签
