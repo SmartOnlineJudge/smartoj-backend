@@ -25,7 +25,8 @@ from .models import (
     QuestionAddTestData, 
     QuestionAddTag, 
     QuestionUpdateTag,
-    QuestionOnlineJudge
+    QuestionOnlineJudge,
+    QuestionOut
 )
 
 router = APIRouter()
@@ -408,3 +409,21 @@ async def query_tags(service: TagServiceDependency, require_question_count: bool
         result["question_count"] = question_count
         results.append(result)
     return SmartOJResponse(ResponseCodes.OK, data=results)
+
+
+@router.get("/questions", summary="查询题目信息列表", tags=["题目信息"])
+async def query_questions(
+    service: QuestionServiceDependency,
+    page: int = Query(1, ge=1),
+    size: int = Query(5, ge=1)
+):
+    """
+    ## 参数列表说明:
+    **page**: 查询的页码；必须；默认为1；查询参数 </br>
+    **size**: 每页的数据数；必须；请求体；默认为5；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    questions, total = await service.query_by_page(page, size, management=False)
+    results = [QuestionOut.model_validate(question) for question in questions]
+    return SmartOJResponse(ResponseCodes.OK, data={"results": results, "total": total})

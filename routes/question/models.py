@@ -98,3 +98,11 @@ class QuestionOnlineJudge(SmartOJSQLModel):
     tags: list[QuestionTag]
     tests: list[Test]
     solving_frameworks: list[SolvingFramework]
+
+
+class QuestionOut(SmartOJSQLModel):
+    id: int
+    difficulty: str
+    submission_quantity: int
+    pass_quantity: int
+    title: str
