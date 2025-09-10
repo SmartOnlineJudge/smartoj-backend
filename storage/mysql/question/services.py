@@ -235,6 +235,15 @@ class SolvingFrameworkService(MySQLService):
         solving_frameworks = await self.session.exec(statement)
         return solving_frameworks.first()
 
+    async def query_by_question_id(self, question_id: int):
+        statement = (
+            select(SolvingFramework)
+            .where(SolvingFramework.question_id == question_id)
+            .options(selectinload(SolvingFramework.language))
+        )
+        solving_frameworks = await self.session.exec(statement)
+        return solving_frameworks.all()
+
     async def query_by_combination_index(self, question_id: int, language_id: int):
         statement = (
             select(SolvingFramework)
@@ -324,7 +333,16 @@ class JudgeTemplateService(MySQLService):
         statement = select(JudgeTemplate).where(JudgeTemplate.id == judge_template_id)
         judge_templates = await self.session.exec(statement)
         return judge_templates.first()
-    
+
+    async def query_by_question_id(self, question_id: int):
+        statement = (
+            select(JudgeTemplate)
+            .where(JudgeTemplate.question_id == question_id)
+            .options(selectinload(JudgeTemplate.language))
+        )
+        judge_templates = await self.session.exec(statement)
+        return judge_templates.all()
+
     async def query_by_combination_index(self, question_id: int, language_id: int):
         """
         根据联合索引（question_id、language_id）查询判题模板信息
@@ -373,6 +391,20 @@ class MemoryTimeLimitService(MySQLService):
         statement = select(MemoryTimeLimit).where(MemoryTimeLimit.id == memory_time_limit_id)
         memory_time_limits = await self.session.exec(statement)
         return memory_time_limits.first()
+
+    async def query_by_question_id(self, question_id: int):
+        """
+        根据问题ID查询内存时间限制信息
+        :param question_id: 问题ID
+        :return:
+        """
+        statement = (
+            select(MemoryTimeLimit)
+            .where(MemoryTimeLimit.question_id == question_id)
+            .options(selectinload(MemoryTimeLimit.language))
+        )
+        memory_time_limits = await self.session.exec(statement)
+        return memory_time_limits.all()
 
     async def query_by_combination_index(self, question_id: int, language_id: int):
         """

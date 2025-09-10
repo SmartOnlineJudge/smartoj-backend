@@ -28,6 +28,7 @@ from .models import (
     QuestionOnlineJudge,
     QuestionOut
 )
+from ..management.models import JudgeTemplate, MemoryTimeLimit, SolvingFramework, Test
 
 router = APIRouter()
 
@@ -427,3 +428,69 @@ async def query_questions(
     questions, total = await service.query_by_page(page, size, management=False)
     results = [QuestionOut.model_validate(question) for question in questions]
     return SmartOJResponse(ResponseCodes.OK, data={"results": results, "total": total})
+
+
+@router.get("/judge-templates", summary="查询一个题目的所有判题模板", tags=["判题模板"])
+async def query_judge_templates(
+    service: JudgeTemplateServiceDependency,
+    question_id: int = Query(ge=1)
+):
+    """
+    ## 参数列表说明:
+    **question_id**: 查询的题目的ID；必须；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    judge_templates = await service.query_by_question_id(question_id)
+    results = [JudgeTemplate.model_validate(judge_template) for judge_template in judge_templates]
+    return SmartOJResponse(ResponseCodes.OK, data=results)
+
+
+@router.get("/memory-time-limits", summary="查询一个题目的所有内存时间限制", tags=["内存时间限制"])
+async def query_memory_time_limits(
+    service: MemoryTimeLimitDependency,
+    question_id: int = Query(ge=1)
+):
+    """
+    ## 参数列表说明:
+    **question_id**: 获取内存时间限制的题目的ID；必须；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    memory_time_limits = await service.query_by_question_id(question_id)
+    results = [MemoryTimeLimit.model_validate(memory_time_limit) for memory_time_limit in memory_time_limits]
+    return SmartOJResponse(ResponseCodes.OK, data=results)
+
+
+# 查询一个题目的所有解题框架
+@router.get("/solving-frameworks", summary="查询一个题目的所有解题框架", tags=["解题框架"])
+async def query_solving_frameworks(
+    service: SolvingFrameworkServiceDependency,
+    question_id: int = Query(ge=1)
+):
+    """
+    ## 参数列表说明:
+    **question_id**: 获取解题框架的题目的ID；必须；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    solving_frameworks = await service.query_by_question_id(question_id)
+    results = [SolvingFramework.model_validate(solving_framework) for solving_framework in solving_frameworks]
+    return SmartOJResponse(ResponseCodes.OK, data=results)
+
+
+# 查询一个题目的所有测试用例
+@router.get("/tests", summary="查询一个题目的所有测试用例", tags=["测试用例"])
+async def query_tests(
+    service: TestServiceDependency,
+    question_id: int = Query(ge=1)
+):
+    """
+    ## 参数列表说明:
+    **question_id**: 获取测试用例的题目的ID；必须；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    tests = await service.query_by_question_id(question_id)
+    results = [Test.model_validate(test) for test in tests]
+    return SmartOJResponse(ResponseCodes.OK, data=results)
