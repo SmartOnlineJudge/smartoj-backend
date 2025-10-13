@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Body, Query
 
 from utils.responses import SmartOJResponse, ResponseCodes
@@ -25,10 +27,10 @@ from .models import (
     QuestionAddTestData, 
     QuestionAddTag, 
     QuestionUpdateTag,
-    QuestionOnlineJudge,
-    QuestionOut
+    QuestionOnlineJudge
 )
 from ..management.models import JudgeTemplate, MemoryTimeLimit, SolvingFramework, Test
+from storage.es import client as es_client
 
 router = APIRouter()
 
@@ -414,19 +416,81 @@ async def query_tags(service: TagServiceDependency, require_question_count: bool
 
 @router.get("/questions", summary="查询题目信息列表", tags=["题目信息"])
 async def query_questions(
-    service: QuestionServiceDependency,
     page: int = Query(1, ge=1),
-    size: int = Query(5, ge=1)
+    size: int = Query(5, ge=1),
+    tags: Optional[list[str]] = Query(None),
+    difficulty: Optional[str] = Query(None),
+    keyword: Optional[str] = Query(None)
 ):
     """
     ## 参数列表说明:
     **page**: 查询的页码；必须；默认为1；查询参数 </br>
-    **size**: 每页的数据数；必须；请求体；默认为5；查询参数
+    **size**: 每页的数据数；必须；请求体；默认为5；查询参数 </br>
+    **tags**: 标签列表，支持多选；可选；查询参数 </br>
+    **difficulty**: 难度筛选；可选（easy | medium | hard）；查询参数 </br>
+    **keyword**: 在题目标题和题目描述中搜索关键词；可选；查询参数
     ## 响应代码说明:
     **200**: 业务逻辑执行成功
     """
-    questions, total = await service.query_by_page(page, size, management=False)
-    results = [QuestionOut.model_validate(question) for question in questions]
+    # 构建 bool 查询
+    query = {
+        "bool": {
+            "must": [],
+            "filter": []
+        }
+    }
+
+    # 全文搜索（title + description）
+    if keyword:
+        query["bool"]["must"].append({
+            "multi_match": {
+                "query": keyword,
+                "fields": ["title", "description"],
+                "type": "best_fields"
+            }
+        })
+
+    # 标签筛选（tags 是 keyword 类型，需精确匹配）
+    if tags:
+        # 多个 tag 是“或”关系（也可改为“与”，根据需求）
+        query["bool"]["filter"].append({
+            "terms": {
+                "tags": tags
+            }
+        })
+
+    # 难度筛选
+    if difficulty:
+        query["bool"]["filter"].append({
+            "term": {
+                "difficulty": difficulty
+            }
+        })
+
+    # 分页计算（Elasticsearch 的 from 是从0开始）
+    from_ = (page - 1) * size
+
+    response = await es_client.search(
+        index="question",
+        body={
+            "query": query,
+            "from": from_,
+            "size": size,
+            "sort": [{"id": {"order": "asc"}}]
+        }
+    )
+
+    hits = response["hits"]["hits"]
+    total = response["hits"]["total"]["value"]
+
+    # 提取 source 数据
+    results = []
+    for hit in hits:
+        data = hit["_source"]
+        data.pop("description")
+        data.pop("tags")
+        results.append(data)
+
     return SmartOJResponse(ResponseCodes.OK, data={"results": results, "total": total})
 
 

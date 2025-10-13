@@ -9,6 +9,7 @@ import settings
 from routes import user_router, question_router, management_router, codesandbox_router
 from storage.mysql import engine
 from storage.cache import close_cache_connections
+from storage.es import client as es_client
 from mq.broker import broker
 from utils.openapi.docs import custom_swagger_ui_html
 
@@ -25,6 +26,8 @@ async def on_shutdown():
     await broker.shutdown()
     logger.info("Disconnecting with Redis")
     await close_cache_connections()
+    logger.info("Disconnecting with ElasticSearch")
+    await es_client.close()
 
 
 @asynccontextmanager

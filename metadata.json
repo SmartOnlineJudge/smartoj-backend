@@ -29,6 +29,13 @@
           "DB": 2,
           "PASSWORD": null
         }
+      },
+      "elasticsearch": {
+        "default": {
+          "URL": "http://127.0.0.1:9200",
+          "USER": "elastic",
+          "PASSWORD": "elastic"
+        }
       }
     },
     "secrets": {

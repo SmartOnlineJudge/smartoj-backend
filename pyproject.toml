@@ -7,10 +7,12 @@ requires-python = ">=3.11"
 dependencies = [
     "aiomysql>=0.2.0",
     "aiosmtplib>=4.0.1",
+    "elasticsearch[async]==8.18",
     "fastapi[standard]>=0.115.12",
     "filetype>=1.2.0",
     "httpx-socks>=0.10.0",
     "minio>=7.2.15",
+    "mysql-replication==0.46",
     "python-socks>=2.7.1",
     "sqlmodel>=0.0.24",
     "taskiq>=0.11.17",

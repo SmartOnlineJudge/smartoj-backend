@@ -44,3 +44,6 @@ PROXY_URL = "socks5://127.0.0.1:1080"
 
 # 代码沙箱判题接口地址
 CODESANDBOX_URL = "http://127.0.0.1:8080/sandbox/judgement"
+
+# ElasticSearch 配置
+ELASTICSEARCH_CONF: dict = METADATA["databases"]["elasticsearch"]
