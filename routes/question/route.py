@@ -27,10 +27,15 @@ from .models import (
     QuestionAddTestData, 
     QuestionAddTag, 
     QuestionUpdateTag,
-    QuestionOnlineJudge
+    QuestionOnlineJudge,
+    BinLogTriggerWriteEvent,
+    BinLogTriggerUpdateEvent,
+    BinLogTriggerDeleteEvent
 )
 from ..management.models import JudgeTemplate, MemoryTimeLimit, SolvingFramework, Test
 from storage.es import client as es_client
+from mq.broker import update_question_tag_task, update_question_task
+
 
 router = APIRouter()
 
@@ -526,7 +531,6 @@ async def query_memory_time_limits(
     return SmartOJResponse(ResponseCodes.OK, data=results)
 
 
-# 查询一个题目的所有解题框架
 @router.get("/solving-frameworks", summary="查询一个题目的所有解题框架", tags=["解题框架"])
 async def query_solving_frameworks(
     service: SolvingFrameworkServiceDependency,
@@ -543,7 +547,6 @@ async def query_solving_frameworks(
     return SmartOJResponse(ResponseCodes.OK, data=results)
 
 
-# 查询一个题目的所有测试用例
 @router.get("/tests", summary="查询一个题目的所有测试用例", tags=["测试用例"])
 async def query_tests(
     service: TestServiceDependency,
@@ -558,3 +561,15 @@ async def query_tests(
     tests = await service.query_by_question_id(question_id)
     results = [Test.model_validate(test) for test in tests]
     return SmartOJResponse(ResponseCodes.OK, data=results)
+
+
+@router.post("/binlog-trigger", include_in_schema=False)
+async def binlog_trigger(
+    event: BinLogTriggerWriteEvent | BinLogTriggerUpdateEvent | BinLogTriggerDeleteEvent,
+):
+    event_dict = event.model_dump()
+    if event_dict["table"] == "question":
+        await update_question_task.kiq(event_dict)
+    else:
+        await update_question_tag_task.kiq(event_dict)
+    return SmartOJResponse(ResponseCodes.OK)

@@ -106,3 +106,21 @@ class QuestionOut(SmartOJSQLModel):
     submission_quantity: int
     pass_quantity: int
     title: str
+
+
+class BinLogTriggerEvent(SmartOJSQLModel):
+    table: str
+    action: str
+
+
+class BinLogTriggerDeleteEvent(BinLogTriggerEvent):
+    values: dict
+
+
+class BinLogTriggerWriteEvent(BinLogTriggerEvent):
+    values: dict
+
+
+class BinLogTriggerUpdateEvent(BinLogTriggerEvent):
+    before_values: dict
+    after_values: dict

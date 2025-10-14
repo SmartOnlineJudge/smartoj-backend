@@ -104,6 +104,11 @@ class QuestionService(MySQLService):
 
 
 class TagService(MySQLService):
+    async def query_by_primary_key(self, tag_id: int):
+        statement = select(Tag).where(Tag.id == tag_id)
+        tag = await self.session.exec(statement)
+        return tag.first()
+
     async def query_all(self, require_question_count: bool = False):
         if require_question_count:
             statement = (

@@ -13,8 +13,10 @@ from storage.mysql import (
     LanguageService,
     MemoryTimeLimitService,
     TestService,
-    QuestionService
+    QuestionService,
+    TagService
 )
+from storage.es import client as es_client
 
 
 _mq_conf = settings.REDIS_CONF["mq"]
@@ -104,3 +106,77 @@ async def call_codesandbox_task(
                 (total_test_quantity == pass_test_quantity) and (judge_type == "submit")
             )
         )
+
+
+@broker.task("update-question")
+async def update_question_task(event: dict):
+    """
+    MySQL 中仅有 question 的数据发生变化
+    """
+    action = event["action"]
+    match action:
+        case "insert":
+            document: dict = event["values"]
+            document.pop("is_deleted")
+            document.pop("publisher_id")
+            document["tags"] = []
+            await es_client.index(index="question", id=document["id"], document=document)
+        case "update":
+            doc: dict = event["after_values"]
+            doc.pop("is_deleted")
+            doc.pop("publisher_id")
+            await es_client.update(index="question", id=doc["id"], doc=doc)
+        case "delete":
+            await es_client.delete(index="question", id=event["values"]["id"])
+
+
+@broker.task("update-question-tag")
+async def update_question_tag_task(event: dict):
+    """
+    MySQL 中涉及到 tag 相关的数据发生变化
+    """
+    action = event["action"]
+    table = event["table"]
+    if table == "question_tag":
+        values = event["values"]
+        async with TagService() as service:
+            tag = await service.query_by_primary_key(values["tag_id"])
+        tag_name = tag.name
+        # 使用 Java 脚本来处理数据
+        script = {"params": {"tag": tag_name}}
+        if action == "insert":
+            script["source"] = "ctx._source.tags.add(params.tag)"
+        elif action == "delete":
+            script["source"] = "ctx._source.tags.removeIf(tag -> tag == params.tag)"
+        await es_client.update(index="question", id=values["question_id"], script=script)
+    else:
+        if action != "update":
+            # 对于 tag 本身的数据变化，这里只考虑 tag 被更新的情况。
+            # 对于增加标签的情况，不影响 ES 中已经存在的数据，所以不考虑；
+            # 而对于删除标签的情况，这种场景很少见，因此也不考虑。
+            return
+        before_values = event["before_values"]
+        after_values = event["after_values"]
+        if before_values["name"] == after_values["name"]:
+            # tag 名称没有变化，不影响 ES 中的数据，直接忽视。
+            return
+        body = {
+            "query": {
+                "term": {
+                    "tags": before_values["name"]
+                }
+            },
+            "script": {
+                "source": """
+                    for (int i = 0; i < ctx._source.tags.length; i++) {
+                        if (ctx._source.tags[i] == params.before_tag) {
+                            ctx._source.tags[i] = params.after_tag;
+                        }
+                    }""",
+                "params": {
+                    "before_tag": before_values["name"],
+                    "after_tag": after_values["name"]
+                }
+            }
+        }
+        await es_client.update_by_query(index="question", body=body)
