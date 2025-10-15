@@ -1,6 +1,7 @@
 """
 运行方式：python3 -m scripts.listen_mysql_binlog
 """
+import logging
 import json
 import asyncio
 from datetime import datetime
@@ -17,7 +18,12 @@ import settings
 from storage.cache import get_default_redis
 
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 BACKEND_TRIGGER_URL = "http://127.0.0.1:8000/question/binlog-trigger"
+
 
 
 def load_binlog_position(event_loop: asyncio.AbstractEventLoop) -> tuple[str | None, int | None]:
@@ -72,7 +78,7 @@ def listen_binlog(server_id: int = 1):
         log_file=log_file
     )
 
-    print("开始监听 binlog……", end="\n\n")
+    logger.info("开始监听 binlog……")
 
     try:
         for binlog_event in stream:
@@ -91,14 +97,14 @@ def listen_binlog(server_id: int = 1):
                     event["action"] = "insert"
                     event["values"] = pop_datetime_value(row["values"])
 
-                print(event)
+                logger.info(str(event))
                 try:
                     response = httpx.post(BACKEND_TRIGGER_URL, json=event)
                 except Exception as e:
-                    print("请求失败：", e)
+                    logger.info(f"请求失败：{e}")
                     flag = False
                     break
-                print(response.text, end="\n\n")
+                logger.info(response.text)
             if not flag:
                 break
             # 如果循环正常结束，则保存 log_file 和 log_pos
@@ -109,7 +115,7 @@ def listen_binlog(server_id: int = 1):
     finally:
         event_loop.close()
         stream.close()
-    print("结束监听……")
+    logger.info("结束监听……")
 
 
 if __name__ == "__main__":
