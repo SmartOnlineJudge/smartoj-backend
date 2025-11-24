@@ -1,8 +1,10 @@
 from sqlmodel import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import func
 
 from ..base import MySQLService
-from .models import SubmitRecord, JudgeRecord, Test
+from .models import SubmitRecord, JudgeRecord
+from ..user.models import UserDynamic, User
 
 
 class SubmitRecordService(MySQLService):
@@ -45,6 +47,48 @@ class SubmitRecordService(MySQLService):
             setattr(submit_record, key, value)
         self.session.add(submit_record)
         await self.session.commit()
+
+    async def count_user_submissions(self):
+        """
+        统计每个用户的提交次数，仅统计type为'submit'的记录
+        
+        Returns:
+            返回格式: [
+                {
+                    "user_id": "user123", 
+                    "submit_count": 1, 
+                    "user_name": "Alice",
+                    "user_avatar": "avatar_url"
+                },
+                ...
+            ]
+        """        
+        statement = (
+            select(
+                User.user_id,
+                func.count().label("submit_count"),
+                UserDynamic.name,
+                UserDynamic.avatar
+            )
+            .select_from(SubmitRecord)
+            .join(User, SubmitRecord.user_id == User.id)
+            .join(UserDynamic, User.user_dynamic)
+            .where(SubmitRecord.type == "submit")
+            .group_by(User.user_id, UserDynamic.name, UserDynamic.avatar)
+        )
+        
+        result = await self.session.exec(statement)
+        rows = result.all()
+        
+        return [
+            {
+                "user_id": row.user_id, 
+                "submit_count": row.submit_count,
+                "user_name": row.name,
+                "user_avatar": row.avatar
+            } 
+            for row in rows[:5]
+        ]
 
 
 class JudgeRecordService(MySQLService):

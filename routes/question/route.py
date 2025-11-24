@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 from fastapi import APIRouter, Body, Query
@@ -12,7 +13,9 @@ from utils.dependencies import (
     TestServiceDependency,
     QuestionServiceDependency,
     LanguageServiceDependency,
-    TagServiceDependency
+    TagServiceDependency,
+    SubmitRecordDependency,
+    DefaultRedisDependency
 )
 from .models import (
     QuestionCreate,
@@ -585,3 +588,21 @@ async def get_popular_questions(service: QuestionServiceDependency):
     questions = await service.get_hot_questions()
     results = [QuestionOut.model_validate(question) for question in questions]
     return SmartOJResponse(ResponseCodes.OK, data=results)
+
+
+@router.get("/solution-ranking", summary="获取刷题排行榜", tags=["题目信息"])
+async def get_ranking(
+    service: SubmitRecordDependency,
+    default_redis: DefaultRedisDependency,
+):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    key = "solution-ranking"
+    data = await default_redis.get(key)
+    if data:
+        return SmartOJResponse(ResponseCodes.OK, data=json.loads(data))
+    data = await service.count_user_submissions()
+    await default_redis.set(key, json.dumps(data), ex=60 * 5)
+    return SmartOJResponse(ResponseCodes.OK, data=data)
