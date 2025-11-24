@@ -102,6 +102,19 @@ class QuestionService(MySQLService):
         await self.session.exec(text(sql), params={"question_id": question_id})
         await self.session.commit()
 
+    async def get_hot_questions(self, limit: int = 5):
+        """
+        获取热门题目，按提交数量降序排序
+        """
+        statement = (
+            select(Question)
+            .order_by(Question.submission_quantity.desc())
+            .limit(limit)
+        )
+        
+        result = await self.session.exec(statement)
+        return result.all()
+
 
 class TagService(MySQLService):
     async def query_by_primary_key(self, tag_id: int):

@@ -30,7 +30,8 @@ from .models import (
     QuestionOnlineJudge,
     BinLogTriggerWriteEvent,
     BinLogTriggerUpdateEvent,
-    BinLogTriggerDeleteEvent
+    BinLogTriggerDeleteEvent,
+    QuestionOut
 )
 from ..management.models import JudgeTemplate, MemoryTimeLimit, SolvingFramework, Test
 from storage.es import client as es_client
@@ -573,3 +574,14 @@ async def binlog_trigger(
     else:
         await update_question_tag_task.kiq(event_dict)
     return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.get("/popular-questions", summary="获取热门题目列表", tags=["题目信息"])
+async def get_popular_questions(service: QuestionServiceDependency):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    questions = await service.get_hot_questions()
+    results = [QuestionOut.model_validate(question) for question in questions]
+    return SmartOJResponse(ResponseCodes.OK, data=results)
