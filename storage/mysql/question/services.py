@@ -115,6 +115,10 @@ class QuestionService(MySQLService):
         result = await self.session.exec(statement)
         return result.all()
 
+    async def get_question_count_group_by_difficulty(self):
+        statement = select(Question.difficulty, func.count(Question.id)).group_by(Question.difficulty)
+        result = await self.session.exec(statement)
+        return result.all()
 
 class TagService(MySQLService):
     async def query_by_primary_key(self, tag_id: int):

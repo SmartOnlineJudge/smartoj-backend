@@ -5,6 +5,7 @@ from sqlalchemy import func
 from ..base import MySQLService
 from .models import SubmitRecord, JudgeRecord
 from ..user.models import UserDynamic, User
+from ..question.models import Question
 
 
 class SubmitRecordService(MySQLService):
@@ -90,6 +91,32 @@ class SubmitRecordService(MySQLService):
             for row in rows[:5]
         ]
 
+    async def count_user_submissions_group_by_difficulty(self, user_id: int):
+        statement = (
+            select(Question.difficulty, func.count())
+            .select_from(SubmitRecord)
+            .join(Question, SubmitRecord.question_id == Question.id)
+            .where(
+                SubmitRecord.user_id == user_id,
+                SubmitRecord.type == "submit"
+            )
+            .group_by(Question.difficulty)
+        )
+        
+        result = await self.session.exec(statement)
+        rows = result.all()
+        
+        difficulty_count = {
+            "easy": 0,
+            "medium": 0,
+            "hard": 0
+        }
+        
+        for row in rows:
+            difficulty, count = row
+            difficulty_count[difficulty] = count
+            
+        return difficulty_count
 
 class JudgeRecordService(MySQLService):
     async def create_many(self, judge_records: list[dict]):

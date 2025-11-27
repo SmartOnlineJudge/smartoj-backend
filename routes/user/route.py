@@ -27,7 +27,8 @@ from utils.dependencies import (
     SessionRedisDependency,
     MinioClientDependency,
     UserDynamicServiceDependency,
-    UserServiceDependency
+    UserServiceDependency,
+    SubmitRecordDependency
 )
 from storage.oss import MAX_AVATAR_SIZE, async_upload_avatar
 from storage.mysql import create_user_and_dynamic
@@ -344,3 +345,16 @@ async def update_email(
     tasks = [update_db(), update_cache()]
     await asyncio.gather(*tasks)
     return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.get("/passed-count-group-by-difficulty", summary="获取不同题目难度的提交通过数量")
+async def get_count_group_by_difficulty(
+    service: SubmitRecordDependency,
+    user: CurrentUserDependency
+):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    data = await service.count_user_submissions_group_by_difficulty(user["id"])
+    return SmartOJResponse(ResponseCodes.OK, data=data)

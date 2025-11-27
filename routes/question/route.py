@@ -606,3 +606,13 @@ async def get_ranking(
     data = await service.count_user_submissions()
     await default_redis.set(key, json.dumps(data), ex=60 * 5)
     return SmartOJResponse(ResponseCodes.OK, data=data)
+
+
+@router.get("/count-group-by-difficulty", summary="获取每个难度的题目数量", tags=["题目信息"])
+async def get_count_group_by_difficulty(service: QuestionServiceDependency):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    data = await service.get_question_count_group_by_difficulty()
+    return SmartOJResponse(ResponseCodes.OK, data=dict(data))
