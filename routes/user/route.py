@@ -4,6 +4,7 @@ import asyncio
 import random
 import time
 from datetime import datetime
+from collections import defaultdict
 
 import filetype
 from fastapi import APIRouter, UploadFile, Body, Query
@@ -357,7 +358,10 @@ async def get_count_group_by_difficulty(
     ## 响应代码说明:
     **200**: 业务逻辑执行成功
     """
-    data = await service.count_user_submissions_group_by_difficulty(user["id"])
+    results = await service.count_user_submissions_group_by_difficulty(user["id"])
+    data = {"easy": 0, "medium": 0, "hard": 0}
+    for difficulty, count in results:
+        data[difficulty] = count
     return SmartOJResponse(ResponseCodes.OK, data=data)
 
 
@@ -373,5 +377,46 @@ async def get_count_daily(
     ## 响应代码说明:
     **200**: 业务逻辑执行成功
     """
-    data = await service.count_daily_submissions_in_year(user["id"], year)
+    results = await service.count_daily_submissions_in_year(user["id"], year)
+    data = { row.submit_date.strftime("%Y-%m-%d"): row.submit_count for row in results }
     return SmartOJResponse(ResponseCodes.OK, data=data)
+
+
+@router.get("/submit-records", summary="分页获取用户所有题目的提交记录")
+async def get_submission_record(
+    service: SubmitRecordDependency,
+    user: CurrentUserDependency,
+    page: int = Query(1, ge=1),
+    size: int = Query(5, ge=1, le=100)
+):
+    """
+    ## 参数列表说明:
+    **page**: 查询的页码；必须；默认为1；查询参数 </br>
+    **size**: 每页的数据数；必须；请求体；默认为5；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    total, submit_records, question_tags = await service.query_user_submits_with_question_info(user["id"], page, size)
+
+    if total == 0:
+        return SmartOJResponse(ResponseCodes.OK, data={"total": 0, "results": []})
+    
+    # 构建题目ID到标签列表的映射
+    question_tag_map = defaultdict(list)
+    for question_tag in question_tags:
+        question_tag_map[question_tag.question_id].append(question_tag.tag.name)
+    
+    # 构造返回结果
+    results = []
+    for submit_record in submit_records:
+        _submit_record, question = submit_record.SubmitRecord, submit_record.Question
+        results.append({
+            "question_id": question.id,
+            "title": question.title,
+            "difficulty": question.difficulty,
+            "tags": question_tag_map.get(question.id, []),
+            "created_at": _submit_record.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "is_passed": _submit_record.total_test_quantity == _submit_record.pass_test_quantity
+        })
+
+    return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})

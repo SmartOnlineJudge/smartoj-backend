@@ -5,7 +5,7 @@ from sqlalchemy import func
 from ..base import MySQLService
 from .models import SubmitRecord, JudgeRecord
 from ..user.models import UserDynamic, User
-from ..question.models import Question
+from ..question.models import Question, QuestionTag
 
 
 class SubmitRecordService(MySQLService):
@@ -104,20 +104,8 @@ class SubmitRecordService(MySQLService):
         )
         
         result = await self.session.exec(statement)
-        rows = result.all()
-        
-        difficulty_count = {
-            "easy": 0,
-            "medium": 0,
-            "hard": 0
-        }
-        
-        for row in rows:
-            difficulty, count = row
-            difficulty_count[difficulty] = count
-            
-        return difficulty_count
-        
+        return result.all()
+                
     async def count_daily_submissions_in_year(self, user_id: int, year: int):
         statement = (
             select(
@@ -133,15 +121,59 @@ class SubmitRecordService(MySQLService):
         )
         
         result = await self.session.exec(statement)
-        rows = result.all()
+        return result.all()
+                    
+    async def query_user_submits_with_question_info(self, user_id: int, page: int, size: int):
+        # 先查询总数
+        count_statement = (
+            select(func.count())
+            .select_from(SubmitRecord)
+            .where(
+                SubmitRecord.user_id == user_id,
+                SubmitRecord.type == "submit"
+            )
+        )
+        count_result = await self.session.exec(count_statement)
+        total = count_result.first()
         
-        daily_submissions = {}
-        for row in rows:
-            date_str = row.submit_date.strftime("%Y-%m-%d")
-            daily_submissions[date_str] = row.submit_count
-            
-        return daily_submissions
-
+        # 如果总数为0，直接返回空结果
+        if total == 0:
+            return 0, [], []
+        
+        # 构建查询语句，关联SubmitRecord、Question和QuestionTag表
+        statement = (
+            select(SubmitRecord, Question)
+            .join(Question, SubmitRecord.question_id == Question.id)
+            .where(
+                SubmitRecord.user_id == user_id,
+                SubmitRecord.type == "submit"
+            )
+            .order_by(SubmitRecord.created_at.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        
+        result = await self.session.exec(statement)
+        submit_records = result.all()
+        
+        # 获取题目ID列表，用于批量查询标签
+        question_ids = set([row.Question.id for row in submit_records])
+        
+        # 如果没有查询到数据，直接返回
+        if not question_ids:
+            return 0, [], []
+        
+        # 批量查询标签
+        tag_statement = (
+            select(QuestionTag)
+            .where(QuestionTag.question_id.in_(question_ids))
+            .options(selectinload(QuestionTag.tag))
+        )
+        tag_result = await self.session.exec(tag_statement)
+        question_tags = tag_result.all()
+        
+        return total, submit_records, question_tags
+        
 
 class JudgeRecordService(MySQLService):
     async def create_many(self, judge_records: list[dict]):
