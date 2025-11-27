@@ -3,9 +3,10 @@ import json
 import asyncio
 import random
 import time
+from datetime import datetime
 
 import filetype
-from fastapi import APIRouter, UploadFile, Body
+from fastapi import APIRouter, UploadFile, Body, Query
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
@@ -357,4 +358,20 @@ async def get_count_group_by_difficulty(
     **200**: 业务逻辑执行成功
     """
     data = await service.count_user_submissions_group_by_difficulty(user["id"])
+    return SmartOJResponse(ResponseCodes.OK, data=data)
+
+
+@router.get("/solution-heatmap", summary="获取指定年份的刷题统计数据")
+async def get_count_daily(
+    service: SubmitRecordDependency,
+    user: CurrentUserDependency,
+    year: int = Query(datetime.now().year, ge=2022)
+):
+    """
+    ## 参数列表说明:
+    **year**: 获取数据的年份；可选，如果没有则默认为当前年份；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    data = await service.count_daily_submissions_in_year(user["id"], year)
     return SmartOJResponse(ResponseCodes.OK, data=data)

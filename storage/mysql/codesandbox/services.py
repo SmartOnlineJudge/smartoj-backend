@@ -117,6 +117,31 @@ class SubmitRecordService(MySQLService):
             difficulty_count[difficulty] = count
             
         return difficulty_count
+        
+    async def count_daily_submissions_in_year(self, user_id: int, year: int):
+        statement = (
+            select(
+                func.date(SubmitRecord.created_at).label("submit_date"),
+                func.count().label("submit_count")
+            )
+            .where(
+                SubmitRecord.user_id == user_id,
+                SubmitRecord.type == "submit",
+                func.year(SubmitRecord.created_at) == year
+            )
+            .group_by(func.date(SubmitRecord.created_at))
+        )
+        
+        result = await self.session.exec(statement)
+        rows = result.all()
+        
+        daily_submissions = {}
+        for row in rows:
+            date_str = row.submit_date.strftime("%Y-%m-%d")
+            daily_submissions[date_str] = row.submit_count
+            
+        return daily_submissions
+
 
 class JudgeRecordService(MySQLService):
     async def create_many(self, judge_records: list[dict]):
