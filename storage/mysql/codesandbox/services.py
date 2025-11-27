@@ -1,6 +1,6 @@
 from sqlmodel import select
 from sqlalchemy.orm import selectinload
-from sqlalchemy import func
+from sqlalchemy import func, distinct
 
 from ..base import MySQLService
 from .models import SubmitRecord, JudgeRecord
@@ -93,16 +93,16 @@ class SubmitRecordService(MySQLService):
 
     async def count_user_submissions_group_by_difficulty(self, user_id: int):
         statement = (
-            select(Question.difficulty, func.count())
+            select(Question.difficulty, func.count(distinct(Question.id)))
             .select_from(SubmitRecord)
             .join(Question, SubmitRecord.question_id == Question.id)
             .where(
                 SubmitRecord.user_id == user_id,
-                SubmitRecord.type == "submit"
+                SubmitRecord.type == "submit",
+                SubmitRecord.total_test_quantity == SubmitRecord.pass_test_quantity
             )
             .group_by(Question.difficulty)
         )
-        
         result = await self.session.exec(statement)
         return result.all()
                 
