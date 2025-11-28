@@ -69,41 +69,6 @@ async def get_admin_user(admin: CurrentAdminDependency):
     return SmartOJResponse(ResponseCodes.OK, data=mask(admin))
 
 
-@router.put("/user", summary="修改管理员信息")
-async def update_admin_user(
-        admin: CurrentAdminDependency,
-        session_redis: SessionRedisDependency,
-        service: UserDynamicServiceDependency,
-        name: str = Body(max_length=20),
-        profile: str = Body(max_length=255),
-):
-    """
-    ## 参数列表说明:
-    **name**: 管理员名字（最大长度不超过20）；必须；请求体 </br>
-    **profile**: 管理员介绍（最大长度不超过255）；必须；请求体
-    ## 响应代码说明:
-    **200**: 业务逻辑执行成功
-    """
-
-    async def update_db():
-        """更新数据库"""
-        await service.update(admin["user_id"], {'name': name, 'profile': profile})
-
-    async def update_cache():
-        """更新缓存"""
-        user_str_id = USER_PREFIX + admin["user_id"]
-        user_str = await session_redis.get(user_str_id)
-        user_dict = json.loads(user_str)
-        user_dict["name"] = name
-        user_dict["profile"] = profile
-        ex = await session_redis.ttl(user_str_id)
-        await session_redis.set(user_str_id, json.dumps(user_dict), ex)
-
-    tasks = [update_db(), update_cache()]
-    await asyncio.gather(*tasks)
-    return SmartOJResponse(ResponseCodes.OK)
-
-
 @router.get("/users", summary="分页获取用户信息")
 async def get_user_data(
         _: CurrentAdminDependency,

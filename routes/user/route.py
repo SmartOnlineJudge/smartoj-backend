@@ -420,3 +420,38 @@ async def get_submission_record(
         })
 
     return SmartOJResponse(ResponseCodes.OK, data={"total": total, "results": results})
+
+
+@router.put("", summary="修改用户基本信息")
+async def update_user_base_info(
+    user: CurrentUserDependency,
+    session_redis: SessionRedisDependency,
+    service: UserDynamicServiceDependency,
+    name: str = Body(max_length=20),
+    profile: str = Body(max_length=255),
+):
+    """
+    ## 参数列表说明:
+    **name**: 用户名（最大长度不超过20）；必须；请求体 </br>
+    **profile**: 用户介绍（最大长度不超过255）；必须；请求体
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+
+    async def update_db():
+        """更新数据库"""
+        await service.update(user["user_id"], {'name': name, 'profile': profile})
+
+    async def update_cache():
+        """更新缓存"""
+        user_str_id = USER_PREFIX + user["user_id"]
+        user_str = await session_redis.get(user_str_id)
+        user_dict = json.loads(user_str)
+        user_dict["name"] = name
+        user_dict["profile"] = profile
+        ex = await session_redis.ttl(user_str_id)
+        await session_redis.set(user_str_id, json.dumps(user_dict), ex)
+
+    tasks = [update_db(), update_cache()]
+    await asyncio.gather(*tasks)
+    return SmartOJResponse(ResponseCodes.OK)
