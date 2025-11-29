@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "databases": {
+      "mysql": {
+        "default": {
+          "USER": "your_user",
+          "PASSWORD": "your_password",
+          "PORT": 3306,
+          "HOST": "127.0.0.1",
+          "NAME": "your_db_name"
+        }
+      },
+      "redis": {
+        "default": {
+          "HOST": "127.0.0.1",
+          "PORT": 6379,
+          "DB": 0,
+          "PASSWORD": null
+        },
+        "session": {
+          "HOST": "127.0.0.1",
+          "PORT": 6379,
+          "DB": 1,
+          "PASSWORD": null
+        },
+        "mq": {
+          "HOST": "127.0.0.1",
+          "PORT": 6379,
+          "DB": 2,
+          "PASSWORD": null
+        }
+      },
+      "elasticsearch": {
+        "default": {
+          "URL": "http://127.0.0.1:9200",
+          "USER": "elastic",
+          "PASSWORD": "elastic"
+        }
+      }
+    },
+    "secrets": {
+      "PASSWORD": "your_secret",
+      "GITHUB_OAUTH2": {
+        "client_id": "your client id",
+        "client_secret": "your client secret"
+      }
+    },
+    "minio": {
+      "access_key": "your_access_key",
+      "secret_key": "your_secret_key",
+      "endpoint": "127.0.0.1:9000",
+      "secure": false
+    },
+    "rabbitmq": {
+      "url": "amqp://guest:guest@127.0.0.1"
+    },
+    "smtp": {
+      "host": "smtp.example.com",
+      "port": 587,
+      "name": "智能算法刷题平台-邮件系统",
+      "password": "your_password",
+      "from": "no-reply@example.com"
+    }
+  }
+}
