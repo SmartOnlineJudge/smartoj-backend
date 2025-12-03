@@ -36,6 +36,8 @@ class Solution(SmartOJSQLModel, table=True):
     is_deleted: bool = Field(False, nullable=False)
     question_id: int = Field(nullable=False, foreign_key="question.id")
     user_id: int = Field(nullable=False, foreign_key="user.id")
+    view_count: int = Field(0, nullable=False)
+    comment_count: int = Field(0, nullable=False)
     user: User = Relationship()
     question: Question = Relationship()
 

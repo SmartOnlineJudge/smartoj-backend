@@ -6,11 +6,78 @@ from sqlalchemy import func, text
 
 from ..base import MySQLService
 from ..user.models import User
-from .models import Comment
+from .models import Comment, Solution
 
 
 class SolutionService(MySQLService):
-    pass
+    async def query_by_user_id(self, user_id: int):
+        statement = select(Solution).where(Solution.user_id == user_id, Solution.is_deleted == False)
+        solution = await self.session.exec(statement)
+        return solution.first()
+
+    async def query_by_primary_key(self, solution_id: int):
+        statement = (
+            select(Solution)
+            .where(Solution.id == solution_id, Solution.is_deleted == False)
+            .options(selectinload(Solution.user).selectinload(User.user_dynamic))
+        )
+        solution = await self.session.exec(statement)
+        return solution.first()
+
+    async def create(self, user_id: int, content: str, title: str, question_id: int):
+        solution = Solution(
+            user_id=user_id,
+            content=content,
+            title=title,
+            question_id=question_id
+        )
+        self.session.add(solution)
+        await self.session.commit()
+
+    async def update(self, solution_id: int, user_id: int, content: str, title: str):
+        sql = text("UPDATE solution SET content = :content, title = :title WHERE id = :solution_id AND user_id = :user_id")
+        await self.session.exec(sql, params={"solution_id": solution_id, "user_id": user_id, "content": content, "title": title})
+        await self.session.commit()
+
+    async def logic_delete(self, solution_id: int, user_id: int, superuser_mode: bool = False):
+        if not superuser_mode:  # 管理员模式，不需要验证该题解是否是自己的
+            statement = select(Solution).where(Solution.id == solution_id)
+        else:
+            statement = select(Solution).where(Solution.id == solution_id, Solution.user_id == user_id)
+        result = await self.session.exec(statement)
+        solution = result.first()
+        if solution is None:
+            return False
+        solution.is_deleted = True
+        self.session.add(solution)
+        await self.session.commit()
+        return True
+    
+    async def increment_(self, solution_id: int, field: str):
+        sql = text(f"UPDATE solution SET {field} = {field} + 1 WHERE id = :solution_id")
+        await self.session.exec(sql, params={"solution_id": solution_id})
+        await self.session.commit()
+
+    async def increment_view_count(self, solution_id: int):
+        return await self.increment_(solution_id, "view_count")
+
+    async def increment_comment_count(self, solution_id: int):
+        return await self.increment_(solution_id, "comment_count")
+
+    async def get_solution_list(self, question_id: int, last_created_at: datetime, size: int = 5):
+        statement = (
+            select(Solution, func.substr(Solution.content, 1, 50).label("content_preview"))
+            .where(
+                Solution.question_id == question_id,
+                Solution.is_deleted == False,
+                Solution.created_at < last_created_at
+            )
+            .options(selectinload(Solution.user).selectinload(User.user_dynamic))
+            .order_by(Solution.created_at.desc())
+            .limit(size)
+        )
+        solutinos = await self.session.exec(statement)
+        return solutinos.all()
 
 
 class CommentService(MySQLService):

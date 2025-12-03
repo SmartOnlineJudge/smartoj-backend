@@ -13,6 +13,8 @@ MINIO_CONF = settings.MINIO_CONF
 
 # 用户头像存储桶名称
 AVATAR_BUCKET_NAME = "user-avatars"
+# 存储题解图片的桶名称
+SOLUTION_IMAGE_BUCKET_NAME = "solution-images"
 
 # 最大用户头像大小 3MB
 MAX_AVATAR_SIZE = 3 * 1024 * 1024
