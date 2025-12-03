@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from uvicorn.config import logger
 
 import settings
-from routes import user_router, question_router, management_router, codesandbox_router
+from routes import user_router, question_router, management_router, codesandbox_router, comment_router
 from storage.mysql import engine
 from storage.cache import close_cache_connections
 from storage.es import client as es_client
@@ -56,6 +56,7 @@ app.include_router(user_router, prefix="/user", tags=["用户信息相关接口"
 app.include_router(question_router, prefix="/question")
 app.include_router(management_router, prefix="/management", tags=["后台管理系统相关接口"])
 app.include_router(codesandbox_router, prefix="/codesandbox", tags=["代码沙箱接口"])
+app.include_router(comment_router, prefix="/comment", tags=["评论接口"])
 
 
 if __name__ == "__main__":
