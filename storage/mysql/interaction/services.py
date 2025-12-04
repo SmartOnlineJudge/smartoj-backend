@@ -40,17 +40,26 @@ class SolutionService(MySQLService):
         await self.session.commit()
 
     async def logic_delete(self, solution_id: int, user_id: int, superuser_mode: bool = False):
-        if not superuser_mode:  # 管理员模式，不需要验证该题解是否是自己的
+        if superuser_mode:  # 管理员模式，不需要验证该题解是否是自己的
             statement = select(Solution).where(Solution.id == solution_id)
         else:
             statement = select(Solution).where(Solution.id == solution_id, Solution.user_id == user_id)
         result = await self.session.exec(statement)
         solution = result.first()
+
         if solution is None:
             return False
-        solution.is_deleted = True
-        self.session.add(solution)
-        await self.session.commit()
+
+        delete_comment_sql = text("UPDATE comment SET is_deleted = 1 WHERE target_id = :solution_id and type = 'solution'")
+        self.session.begin()
+        try:
+            solution.is_deleted = True
+            self.session.add(solution)
+            await self.session.exec(delete_comment_sql, params={"solution_id": solution_id})
+            await self.session.commit()
+        except Exception as _:
+            await self.session.rollback()
+            return False
         return True
     
     async def increment_(self, solution_id: int, field: str):
@@ -112,9 +121,43 @@ class CommentService(MySQLService):
         comment = result.first()
         if comment is None:
             return False
-        comment.is_deleted = True
-        self.session.add(comment)
-        await self.session.commit()
+        
+        # 如果评论是一级评论：
+        # 1. 类型是solution：将全部子评论和自己删除，将题解的评论数减去该一级评论的回复数+1
+        # 2. 类型是question：将全部子评论和自己删除
+        # 如果评论是子评论：
+        # 1. 类型是solution：将自己删除，将题解的评论数和一级评论的回复数减去1
+        # 2. 类型是question：将自己删除，将一级评论的回复数减去1
+        decrement_count = 0
+        delete_children_sql = None
+        update_solution_comment_count_sql = None
+        update_root_comment_reply_count_sql = None
+
+        if comment.type == "solution":
+            update_solution_comment_count_sql = text("UPDATE solution SET comment_count = comment_count - :decrement_count WHERE id = :target_id")
+        if comment.root_comment_id is None:
+            delete_children_sql = text("UPDATE comment SET is_deleted = 1 WHERE root_comment_id = :comment_id")
+            if comment.type == "solution":
+                decrement_count = comment.reply_count + 1
+        else:
+            update_root_comment_reply_count_sql = text("UPDATE comment SET reply_count = reply_count - 1 WHERE id = :root_comment_id")
+            if comment.type == "solution":
+                decrement_count = 1
+            
+        self.session.begin()
+        try:
+            comment.is_deleted = True
+            self.session.add(comment)
+            if delete_children_sql is not None:
+                await self.session.exec(delete_children_sql, params={"comment_id": comment_id})
+            if update_solution_comment_count_sql is not None:
+                await self.session.exec(update_solution_comment_count_sql, params={"decrement_count": decrement_count, "target_id": comment.target_id})
+            if update_root_comment_reply_count_sql is not None:
+                await self.session.exec(update_root_comment_reply_count_sql, params={"root_comment_id": comment.root_comment_id})
+            await self.session.commit()
+        except Exception as _:
+            await self.session.rollback()
+            return False
         return True
 
     async def get_root_comments(self, target_id: int, comment_type: str, page: int = 1, size: int = 10):

@@ -2,7 +2,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Body, Query
 
-from utils.dependencies import CurrentUserDependency, CommentServiceDependency
+from utils.dependencies import CurrentUserDependency, CommentServiceDependency, SolutionServiceDependency
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.generic import decode_cursor, encode_cursor
 from .models import CreateComment, CommentType, CommentOut
@@ -14,7 +14,8 @@ router = APIRouter()
 @router.post("", summary="创建一条评论")
 async def create_comment(
     user: CurrentUserDependency,
-    service: CommentServiceDependency,
+    comment_service: CommentServiceDependency,
+    solution_service: SolutionServiceDependency,
     comment: CreateComment
 ):
     """
@@ -29,8 +30,10 @@ async def create_comment(
     """
     data = comment.model_dump()
     if comment.root_comment_id is not None:
-        await service.increment_reply_count(comment.root_comment_id)
-    comment_metadata = await service.create(**data, user_id=user["id"])
+        await comment_service.increment_reply_count(comment.root_comment_id)
+    if comment.type == CommentType.solution:
+        await solution_service.increment_comment_count(comment.target_id)
+    comment_metadata = await comment_service.create(**data, user_id=user["id"])
     comment_metadata["created_at"] = comment_metadata["created_at"].strftime("%Y-%m-%d %H:%M:%S")
     return SmartOJResponse(ResponseCodes.OK, data=comment_metadata)
 
