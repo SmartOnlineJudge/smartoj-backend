@@ -96,7 +96,7 @@ async def get_child_comments(
     **260**: 请求参数错误
     """
     if cursor is None:
-        last_created_at = datetime.now()
+        last_created_at = datetime.fromisoformat("20250118")
     else:
         try:
             last_created_at = decode_cursor(cursor)[1]

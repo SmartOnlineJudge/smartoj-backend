@@ -199,10 +199,10 @@ class CommentService(MySQLService):
             .where(
                 Comment.root_comment_id == root_comment_id,
                 Comment.is_deleted == False,
-                Comment.created_at < last_created_at
+                Comment.created_at > last_created_at
             )
             .options(selectinload(Comment.user).selectinload(User.user_dynamic))
-            .order_by(Comment.created_at.desc())
+            .order_by(Comment.created_at)
             .limit(size)
         )
         comments = await self.session.exec(statement)
