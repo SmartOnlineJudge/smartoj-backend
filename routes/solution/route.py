@@ -149,6 +149,6 @@ async def get_solution_detail(service: SolutionServiceDependency, solution_id: i
     solution = await service.query_by_primary_key(solution_id)
     if solution is None:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
-    await service.increment_view_count(solution_id)
     solution = SolutionOut.model_validate(solution)
+    await service.increment_view_count(solution_id)
     return SmartOJResponse(ResponseCodes.OK, data=solution)
