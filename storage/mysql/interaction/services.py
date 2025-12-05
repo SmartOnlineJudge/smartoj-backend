@@ -188,6 +188,17 @@ class CommentService(MySQLService):
         total = await self.session.scalar(count_statement)
         return comments.all(), total
     
+    async def get_comment_count(self, target_id: int, comment_type: str):
+        statement = (
+            select(func.count(Comment.id))
+            .where(
+                Comment.target_id == target_id,
+                Comment.type == comment_type,
+                Comment.is_deleted == False
+            )
+        )
+        return await self.session.scalar(statement)
+
     async def increment_reply_count(self, comment_id: int):
         sql = text("UPDATE comment SET reply_count = reply_count + 1 WHERE id = :comment_id")
         await self.session.exec(sql, params={"comment_id": comment_id})

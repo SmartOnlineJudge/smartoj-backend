@@ -110,3 +110,20 @@ async def get_child_comments(
         next_cursor = encode_cursor(last_comment.id, last_comment.created_at)
     results = [CommentOut.model_validate(comment) for comment in comments]
     return SmartOJResponse(ResponseCodes.OK, data={"results": results, "has_more": has_more, "cursor": next_cursor})
+
+
+@router.get("/count", summary="查询指定目标的评论数量")
+async def get_comment_count(
+    service: CommentServiceDependency,
+    comment_type: CommentType = Query(),
+    target_id: int = Query(ge=1)
+):
+    """
+    ## 参数列表说明:
+    **comment_type**: 评论的类型（question、solution）；必须；查询参数 </br>
+    **target_id**: 被评论对象的ID（只能是question_id或solution_id）；必须；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    count = await service.get_comment_count(target_id, comment_type)
+    return SmartOJResponse(ResponseCodes.OK, data={"count": count})
