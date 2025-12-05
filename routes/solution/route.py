@@ -1,13 +1,16 @@
 from datetime import timedelta, datetime
 
-from fastapi import APIRouter, Query, Body
+from fastapi import APIRouter, Query, Body, Request
 
+from core.user.session import cookie_scheme, get_current_user
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.generic import random_avatar_name, decode_cursor, encode_cursor
 from utils.dependencies import (
     CurrentUserDependency, 
     SolutionServiceDependency, 
-    MinioClientDependency
+    MinioClientDependency,
+    SessionRedisDependency,
+    SubmitRecordDependency
 )
 from storage.oss import SOLUTION_IMAGE_BUCKET_NAME
 from .models import CreateSolution, UpdateSolution, SolutionOut
@@ -46,7 +49,8 @@ def upload_solution_image(
 @router.post("", summary="发布题解")
 async def create_solution(
     user: CurrentUserDependency,
-    service: SolutionServiceDependency,
+    solution_service: SolutionServiceDependency,
+    submit_record_service: SubmitRecordDependency,
     solution: CreateSolution
 ):
     """
@@ -56,12 +60,21 @@ async def create_solution(
     **question_id**: 题目的ID；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
-    **700**: 每个用户只能对一道题目创建一个题解
+    **700**: 每个用户只能对一道题目创建一个题解 </br>
+    **710**: 只有通过一次提交才可以编写题解
     """
-    old_solution = await service.query_by_user_id(user["id"])
+    old_solution = await solution_service.query_by_user_and_question_id(user["id"], solution.question_id)
     if old_solution is not None:
         return SmartOJResponse(ResponseCodes.SOLUTION_ALREADY_EXISTS)
-    await service.create(user["id"], **solution.model_dump())
+    submit_records = await submit_record_service.query_by_user_and_question_id(user["id"], solution.question_id)
+    is_passed = False
+    for submit_record in submit_records:
+        if submit_record.type == "submit" and submit_record.pass_test_quantity == submit_record.total_test_quantity:
+            is_passed = True
+            break
+    if not is_passed:
+        return SmartOJResponse(ResponseCodes.NOT_PASSED_ALL_TESTS)
+    await solution_service.create(user["id"], **solution.model_dump())
     return SmartOJResponse(ResponseCodes.OK)
 
 
@@ -138,15 +151,29 @@ async def get_solution_list(
 
 
 @router.get("", summary="获取题解详情")
-async def get_solution_detail(service: SolutionServiceDependency, solution_id: int = Query(ge=1)):
+async def get_solution_detail(
+    session_redis: SessionRedisDependency,
+    request: Request,
+    service: SolutionServiceDependency, 
+    solution_id: int = Query(None, ge=1),
+    question_id: int = Query(None, ge=1)
+):
     """
     ## 参数列表说明:
-    **solution_id**: 题解的ID；必须；查询参数
+    **solution_id**: 题解的ID；可选；查询参数 </br>
+    **question_id**: 题目的ID；可选；查询参数
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
     **255**: 请求的资源不存在
     """
-    solution = await service.query_by_primary_key(solution_id)
+    if not solution_id and not question_id:
+        return SmartOJResponse(ResponseCodes.PARAMS_ERROR)
+    if not solution_id:
+        session_id = await cookie_scheme(request)
+        user: dict = await get_current_user(session_id, session_redis)
+        solution = await service.query_by_user_and_question_id(user["id"], question_id)
+    else:
+        solution = await service.query_by_primary_key(solution_id)
     if solution is None:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
     solution = SolutionOut.model_validate(solution)

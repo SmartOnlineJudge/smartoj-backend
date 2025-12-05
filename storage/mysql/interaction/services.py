@@ -10,8 +10,16 @@ from .models import Comment, Solution
 
 
 class SolutionService(MySQLService):
-    async def query_by_user_id(self, user_id: int):
-        statement = select(Solution).where(Solution.user_id == user_id, Solution.is_deleted == False)
+    async def query_by_user_and_question_id(self, user_id: int, question_id: int):
+        statement = (
+            select(Solution)
+            .where(
+                Solution.user_id == user_id, 
+                Solution.is_deleted == False,
+                Solution.question_id == question_id
+            )
+            .options(selectinload(Solution.user).selectinload(User.user_dynamic))
+        )
         solution = await self.session.exec(statement)
         return solution.first()
 
