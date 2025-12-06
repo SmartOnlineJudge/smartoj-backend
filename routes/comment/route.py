@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, Query
 from utils.dependencies import CurrentUserDependency, CommentServiceDependency, SolutionServiceDependency
 from utils.responses import SmartOJResponse, ResponseCodes
 from utils.generic import decode_cursor, encode_cursor
-from .models import CreateComment, CommentType, CommentOut
+from .models import CreateComment, CommentType, CommentOut, UserCommentOut
 
 
 router = APIRouter()
@@ -127,3 +127,22 @@ async def get_comment_count(
     """
     count = await service.get_comment_count(target_id, comment_type)
     return SmartOJResponse(ResponseCodes.OK, data={"count": count})
+
+
+@router.get("/user/list", summary="获取用户评论列表")
+async def get_user_comment_list(
+    user: CurrentUserDependency,
+    service: CommentServiceDependency,
+    page: int = Query(1, ge=1),
+    size: int = Query(5, ge=1)
+):
+    """
+    ## 参数列表说明:
+    **page**: 当前页码；必须；查询参数 </br>
+    **size**: 每页的数据数；必须；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    comments, total = await service.get_comments_by_user_id(user["id"], page, size)
+    results = [UserCommentOut.model_validate(comment) for comment in comments]
+    return SmartOJResponse(ResponseCodes.OK, data={"results": results, "total": total})

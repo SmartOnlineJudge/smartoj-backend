@@ -32,6 +32,30 @@ class SolutionService(MySQLService):
         solution = await self.session.exec(statement)
         return solution.first()
 
+    async def get_solutions_by_user_id(self, user_id: int, page: int = 1, size: int = 5):
+        solutions_statement = (
+            select(Solution)
+            .where(
+                Solution.user_id == user_id,
+                Solution.is_deleted == False
+            )
+            .options(selectinload(Solution.question))
+            .order_by(Solution.created_at.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        solutions = await self.session.exec(solutions_statement)
+        # 计算总数
+        total_statement = (
+            select(func.count(Solution.id))
+            .where(
+                Solution.user_id == user_id,
+                Solution.is_deleted == False
+            )
+        )
+        total = await self.session.scalar(total_statement)
+        return solutions.all(), total
+
     async def create(self, user_id: int, content: str, title: str, question_id: int):
         solution = Solution(
             user_id=user_id,
@@ -226,3 +250,19 @@ class CommentService(MySQLService):
         )
         comments = await self.session.exec(statement)
         return comments.all()
+
+    async def get_comments_by_user_id(self, user_id: int, page: int = 1, size: int = 10):
+        statement = (
+            select(Comment)
+            .where(Comment.user_id == user_id, Comment.is_deleted == False)
+            .order_by(Comment.created_at.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        comments = await self.session.exec(statement)
+        count_statement = (
+            select(func.count(Comment.id))
+            .where(Comment.user_id == user_id, Comment.is_deleted == False)
+        )
+        total = await self.session.scalar(count_statement)
+        return comments.all(), total

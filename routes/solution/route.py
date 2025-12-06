@@ -13,7 +13,7 @@ from utils.dependencies import (
     SubmitRecordDependency
 )
 from storage.oss import SOLUTION_IMAGE_BUCKET_NAME
-from .models import CreateSolution, UpdateSolution, SolutionOut
+from .models import CreateSolution, UpdateSolution, SolutionOut, UserSolutionOut
 
 
 router = APIRouter()
@@ -179,3 +179,22 @@ async def get_solution_detail(
     solution = SolutionOut.model_validate(solution)
     await service.increment_view_count(solution_id)
     return SmartOJResponse(ResponseCodes.OK, data=solution)
+
+
+@router.get("/user/list", summary="获取用户题解列表")
+async def get_user_solution_list(
+    user: CurrentUserDependency,
+    service: SolutionServiceDependency,
+    page: int = Query(1, ge=1),
+    size: int = Query(5, ge=1)
+):
+    """
+    ## 参数列表说明:
+    **page**: 页码；必须，默认为1；查询参数 </br>
+    **size**: 每页的数据数；必须，默认为5；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功
+    """
+    solutions, total = await service.get_solutions_by_user_id(user["id"], page, size)
+    results = [UserSolutionOut.model_validate(solution) for solution in solutions]
+    return SmartOJResponse(ResponseCodes.OK, data={"results": results, "total": total})

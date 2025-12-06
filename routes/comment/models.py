@@ -35,3 +35,11 @@ class CommentOut(SmartOJSQLModel):
     reply_count: int
     to_comment_id: int | None = None
     user: User
+
+
+class UserCommentOut(SmartOJSQLModel):
+    id: int
+    content: str
+    type: CommentType
+    created_at: datetime
+    reply_count: int

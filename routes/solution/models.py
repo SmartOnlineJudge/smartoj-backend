@@ -25,3 +25,17 @@ class SolutionOut(SmartOJSQLModel):
     view_count: int
     comment_count: int
     user: User
+
+
+class Question(SmartOJSQLModel):
+    id: int
+    title: str
+
+
+class UserSolutionOut(SmartOJSQLModel):
+    id: int
+    title: str
+    created_at: datetime
+    view_count: int
+    comment_count: int
+    question: Question
