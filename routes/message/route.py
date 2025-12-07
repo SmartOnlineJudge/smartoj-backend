@@ -58,9 +58,12 @@ async def delete_message(
     **message_id**: 消息ID；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
+    **255**: 请求的资源不存在 </br>
     **310**: 当前账号权限不足
     """
     message = await service.query_by_primary_key(message_id)
+    if not message:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
     if message.recipient_id != user["id"]:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     await service.update(message_id, {"is_deleted": True})
@@ -78,9 +81,12 @@ async def set_message_as_read(
     **message_id**: 消息ID；必须；请求体
     ## 响应代码说明:
     **200**: 业务逻辑执行成功 </br>
-    **310**: 当前账号权限不足
+    **255**: 请求的资源不存在 </br>
+    **310**: 当前账号权限不足 
     """
     message = await service.query_by_primary_key(message_id)
+    if not message:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
     if message.recipient_id != user["id"]:
         return SmartOJResponse(ResponseCodes.PERMISSION_DENIED)
     await service.update(message_id, {"is_read": True})
