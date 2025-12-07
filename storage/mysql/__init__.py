@@ -13,7 +13,7 @@ from .question.services import (
     SolvingFrameworkService
 )
 from .codesandbox.services import SubmitRecordService, JudgeRecordService
-from .interaction.services import CommentService, SolutionService
+from .interaction.services import CommentService, SolutionService, MessageService
 
 
 async def create_user_and_dynamic(

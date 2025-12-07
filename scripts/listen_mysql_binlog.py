@@ -17,7 +17,7 @@ from pymysqlreplication.row_event import (
 
 import settings
 from storage.cache import get_default_redis
-from mq.broker import broker, update_question_tag_task, update_question_task
+from mq.broker import broker, update_question_tag_task, update_question_task, create_reply_message_task
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,7 +27,8 @@ logger.setLevel(logging.INFO)
 table2task: dict[str, AsyncTaskiqDecoratedTask] = {
     "question": update_question_task,
     "question_tag": update_question_tag_task,
-    "tag": update_question_tag_task
+    "tag": update_question_tag_task,
+    "comment": create_reply_message_task,
 }
 
 
@@ -78,7 +79,7 @@ def listen_binlog(server_id: int = 1):
         server_id=server_id,
         only_events=[WriteRowsEvent, UpdateRowsEvent, DeleteRowsEvent],
         only_schemas=["smartoj"],
-        only_tables=["question", "question_tag", "tag"],
+        only_tables=list(table2task.keys()),
         blocking=True,
         resume_stream=True,
         log_pos=log_pos,

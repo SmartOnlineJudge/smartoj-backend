@@ -17,7 +17,8 @@ from storage.mysql import (
     SubmitRecordService,
     JudgeRecordService,
     CommentService,
-    SolutionService
+    SolutionService,
+    MessageService
 )
 
 
@@ -41,3 +42,4 @@ get_submit_record_service = service_factory(SubmitRecordService)
 get_judge_record_service = service_factory(JudgeRecordService)
 get_comment_service = service_factory(CommentService)
 get_solution_service = service_factory(SolutionService)
+get_message_service = service_factory(MessageService)

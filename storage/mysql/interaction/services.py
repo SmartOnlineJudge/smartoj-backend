@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from sqlmodel import select
 from sqlalchemy.orm import selectinload
@@ -6,7 +7,7 @@ from sqlalchemy import func, text
 
 from ..base import MySQLService
 from ..user.models import User
-from .models import Comment, Solution
+from .models import Comment, Solution, Message
 
 
 class SolutionService(MySQLService):
@@ -266,3 +267,66 @@ class CommentService(MySQLService):
         )
         total = await self.session.scalar(count_statement)
         return comments.all(), total
+
+    async def query_by_primary_key(self, comment_id: int):
+        statement = (
+            select(Comment)
+            .where(Comment.id == comment_id, Comment.is_deleted == False)
+            .options(selectinload(Comment.user).selectinload(User.user_dynamic))
+        )
+        return await self.session.scalar(statement)
+
+
+class MessageService(MySQLService):
+    async def create(self, sender_id: int | None, recipient_id: int, title: str, content: str, type: str):
+        message = Message(
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+            title=title,
+            content=content,
+            type=type
+        )
+        self.session.add(message)
+        await self.session.commit()
+
+    async def get_message_count(self, recipient_id: int, is_read: bool = False):
+        statement = (
+            select(func.count(Message.id))
+            .where(
+                Message.recipient_id == recipient_id,
+                Message.is_read == is_read,
+                Message.is_deleted == False
+            )
+        )
+        return await self.session.scalar(statement)
+
+    async def get_messages_by_recipient_id(self, recipient_id: int, page: int = 1, size: int = 5, is_read: bool = False):
+        statement = (
+            select(Message)
+            .where(
+                Message.recipient_id == recipient_id,
+                Message.is_read == is_read,
+                Message.is_deleted == False
+            )
+            .order_by(Message.created_at.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        messages = await self.session.exec(statement)
+        return messages.all()
+
+    async def update(self, message_id: int, document: dict[str, Any]):
+        message = await self.session.get(Message, message_id)
+        if message is None:
+            return
+        for key, value in document.items():
+            setattr(message, key, value)
+        self.session.add(message)
+        await self.session.commit()
+
+    async def query_by_primary_key(self, message_id: int):
+        statement = (
+            select(Message)
+            .where(Message.id == message_id, Message.is_deleted == False)
+        )
+        return await self.session.scalar(statement)
