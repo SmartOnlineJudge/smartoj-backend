@@ -289,23 +289,31 @@ class MessageService(MySQLService):
         self.session.add(message)
         await self.session.commit()
 
-    async def get_message_count(self, recipient_id: int, is_read: bool = False):
-        statement = (
-            select(func.count(Message.id))
-            .where(
-                Message.recipient_id == recipient_id,
-                Message.is_read == is_read,
-                Message.is_deleted == False
+    async def get_message_count(self, recipient_id: int, is_read: bool | None = None):
+        if is_read is not None:
+            statement = (
+                select(func.count(Message.id))
+                .where(
+                    Message.recipient_id == recipient_id,
+                    Message.is_read == is_read,
+                    Message.is_deleted == False
+                )
             )
-        )
+        else:
+            statement = (
+                select(func.count(Message.id))
+                .where(
+                    Message.recipient_id == recipient_id,
+                    Message.is_deleted == False
+                )
+            )
         return await self.session.scalar(statement)
 
-    async def get_messages_by_recipient_id(self, recipient_id: int, page: int = 1, size: int = 5, is_read: bool = False):
+    async def get_messages_by_recipient_id(self, recipient_id: int, page: int = 1, size: int = 5):
         statement = (
             select(Message)
             .where(
                 Message.recipient_id == recipient_id,
-                Message.is_read == is_read,
                 Message.is_deleted == False
             )
             .order_by(Message.created_at.desc())
