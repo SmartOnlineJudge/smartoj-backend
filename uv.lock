@@ -875,12 +875,16 @@ wheels = [
 
 [[package]]
 name = "mysql-replication"
-version = "0.46"
+version = "1.0.12"
 source = { registry = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple" }
 dependencies = [
+    { name = "packaging" },
     { name = "pymysql" },
 ]
-sdist = { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/03/30/fc9a3c570265d4b016a2d81cd15f98e7ce07e918baf7af1b64e091952091/mysql_replication-0.46.tar.gz", hash = "sha256:7b4a351cf7c494a3b7bf9e4c6b0e9b97036707b4aaf82c7efcc059d83dd277b7", size = 56343, upload-time = "2024-10-25T06:56:40.895Z" }
+sdist = { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/bc/93/483ba7b89535af3cd9e3c718dd68c4f0c9d28b120f9a31354bc61c5bfbd7/mysql_replication-1.0.12.tar.gz", hash = "sha256:3daca3b7a0cf522ee38cf597063580e1e6f305f73b29253688c68570715cf2f7", size = 74056, upload-time = "2025-11-16T15:35:19.009Z" }
+wheels = [
+    { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/f8/34/dbe1d69be4cf606a4dff0fae406b7a93dffeef9398f595d919e30905d0fc/mysql_replication-1.0.12-py3-none-any.whl", hash = "sha256:79645712470fe699e2777cfeb9b661878dbfea8adaffcea920771d531b193952", size = 82496, upload-time = "2025-11-16T15:35:17.826Z" },
+]
 
 [[package]]
 name = "packaging"
@@ -1299,7 +1303,7 @@ requires-dist = [
     { name = "filetype", specifier = ">=1.2.0" },
     { name = "httpx-socks", specifier = ">=0.10.0" },
     { name = "minio", specifier = ">=7.2.15" },
-    { name = "mysql-replication", specifier = "==0.46" },
+    { name = "mysql-replication", specifier = ">=1.0.12" },
     { name = "python-socks", specifier = ">=2.7.1" },
     { name = "sqlmodel", specifier = ">=0.0.24" },
     { name = "taskiq", specifier = ">=0.11.17" },

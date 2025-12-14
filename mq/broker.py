@@ -31,7 +31,16 @@ else:
 
 broker = AioPikaBroker(
     url=settings.RABBITMQ_CONF["url"],
-).with_result_backend(RedisAsyncResultBackend(redis_url=_redis_url))
+).with_result_backend(
+    RedisAsyncResultBackend(
+        redis_url=_redis_url,
+        health_check_interval=30,
+        socket_keepalive=True,
+        retry_on_timeout=True,
+        socket_connect_timeout=15,
+        socket_timeout=10
+    )
+)
 
 
 @broker.task("send-email")
