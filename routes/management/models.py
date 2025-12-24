@@ -55,6 +55,7 @@ class Question(SmartOJSQLModel):
     title: str
     description: str
     difficulty: str
+    score: int
     created_at: datetime
     submission_quantity: int
     pass_quantity: int

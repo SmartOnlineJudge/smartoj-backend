@@ -30,6 +30,7 @@ async def create_index():
             "difficulty": {"type": "keyword"},
             "submission_quantity": {"type": "integer"},
             "pass_quantity": {"type": "integer"},
+            "score": {"type": "integer"},
             "tags": {"type": "keyword"}
         }
     }

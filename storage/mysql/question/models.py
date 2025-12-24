@@ -15,6 +15,7 @@ class Question(SmartOJSQLModel, table=True):
     title: str = Field(max_length=30, nullable=False)
     description: str = Field(max_length=255, nullable=False)
     difficulty: str = Field("easy", max_length=6, nullable=False)
+    score: int = Field(0, nullable=False)
     created_at: datetime = Field(
         None,
         sa_column=Column(
