@@ -5,3 +5,4 @@ from .codesandbox.route import router as codesandbox_router
 from .comment.route import router as comment_router
 from .solution.route import router as solution_router
 from .message.route import router as message_router
+from .recommendation.route import router as recommendation_router

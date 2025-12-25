@@ -14,6 +14,7 @@ from .question.services import (
 )
 from .codesandbox.services import SubmitRecordService, JudgeRecordService
 from .interaction.services import CommentService, SolutionService, MessageService
+from .recommendation.service import UserProfilesService
 
 
 async def create_user_and_dynamic(

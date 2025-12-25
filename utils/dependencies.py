@@ -22,7 +22,8 @@ from utils.service_registry import (
     get_submit_record_service,
     get_comment_service,
     get_solution_service,
-    get_message_service
+    get_message_service,
+    get_user_profiles_service
 )
 from storage.mysql import (
     get_async_session,
@@ -40,7 +41,8 @@ from storage.mysql import (
     JudgeRecordService,
     CommentService,
     SolutionService,
-    MessageService
+    MessageService,
+    UserProfilesService
 )
 from storage.cache import get_session_redis, get_default_redis, Redis
 from storage.oss import get_minio_client, Minio
@@ -74,3 +76,4 @@ JudgeRecordDependency = Annotated[JudgeRecordService, Depends(get_judge_record_s
 CommentServiceDependency = Annotated[CommentService, Depends(get_comment_service)]
 SolutionServiceDependency = Annotated[SolutionService, Depends(get_solution_service)]
 MessageServiceDependency = Annotated[MessageService, Depends(get_message_service)]
+UserProfilesServiceDependency = Annotated[UserProfilesService, Depends(get_user_profiles_service)]

@@ -13,7 +13,8 @@ from routes import (
     codesandbox_router, 
     comment_router,
     solution_router,
-    message_router
+    message_router,
+    recommendation_router
 )
 from storage.mysql import engine
 from storage.cache import close_cache_connections
@@ -67,6 +68,7 @@ app.include_router(codesandbox_router, prefix="/codesandbox", tags=["代码沙�
 app.include_router(comment_router, prefix="/comment", tags=["评论接口"])
 app.include_router(solution_router, prefix="/solution", tags=["题解接口"])
 app.include_router(message_router, prefix="/message", tags=["消息接口"])
+app.include_router(recommendation_router, prefix="/recommendation", tags=["推荐系统接口"])
 
 
 if __name__ == "__main__":

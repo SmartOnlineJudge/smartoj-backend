@@ -18,7 +18,8 @@ from storage.mysql import (
     MessageService,
     UserService,
     SolutionService,
-    CommentService
+    CommentService,
+    UserProfilesService
 )
 from storage.es import client as es_client
 
@@ -46,6 +47,18 @@ broker = AioPikaBroker(
 @broker.task("send-email")
 async def send_email_task(recipient: str, subject: str, content: str):
     await send_email(recipient, subject, content)
+
+
+@broker.task("update-user-profile")
+async def update_user_profile_task(user_id: str):
+    async with (
+        UserProfilesService() as user_profile_service,
+        UserService() as user_service
+    ):
+        user = await user_service.query_by_index("user_id", user_id)
+        if user is None:
+            return
+        await user_profile_service.create_or_update_profile(user.id)
 
 
 @broker.task("call-codesandbox")
@@ -119,6 +132,7 @@ async def call_codesandbox_task(
                 (total_test_quantity == pass_test_quantity) and (judge_type == "submit")
             )
         )
+    await update_user_profile_task.kiq(user_id=user_id)
 
 
 @broker.task("update-question")
