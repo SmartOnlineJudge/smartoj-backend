@@ -13,9 +13,13 @@ class UserProfilesService(MySQLService):
         user_profile: UserProfiles = result.first()
         if not user_profile:
             return None
-        user_profile.strong_tags = json.loads(user_profile.strong_tags)
-        user_profile.weak_tags = json.loads(user_profile.weak_tags)
-        return user_profile
+        return (
+            user_profile, 
+            {
+                "strong_tags": json.loads(user_profile.strong_tags), 
+                "weak_tags": json.loads(user_profile.weak_tags)
+            }
+        )
 
     async def create_or_update_profile(self, user_id: int):
         sql_stats = """

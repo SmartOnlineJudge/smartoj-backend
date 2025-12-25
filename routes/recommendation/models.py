@@ -17,9 +17,7 @@ class UserProfileTag(SmartOJSQLModel):
 
 class UserProfileOut(SmartOJSQLModel):
     last_active_at: datetime
-    strong_tags: list[UserProfileTag]
     strong_difficulty: str
     avg_try_count: float
     total_score: int
-    weak_tags: list[UserProfileTag]
     global_ac_rate: float

@@ -173,7 +173,19 @@ class SubmitRecordService(MySQLService):
         question_tags = tag_result.all()
         
         return total, submit_records, question_tags
-        
+    
+    async def query_all_ac_question_ids(self, user_id: int):
+        statement = (
+            select(SubmitRecord.question_id)
+            .where(
+                SubmitRecord.user_id == user_id,
+                SubmitRecord.type == "submit",
+                SubmitRecord.total_test_quantity == SubmitRecord.pass_test_quantity
+            )
+            .distinct()
+        )
+        result = await self.session.exec(statement)
+        return result.all()
 
 class JudgeRecordService(MySQLService):
     async def create_many(self, judge_records: list[dict]):
