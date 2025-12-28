@@ -1,3 +1,5 @@
+from datetime import datetime, date, time
+
 from sqlmodel import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func, distinct
@@ -48,6 +50,23 @@ class SubmitRecordService(MySQLService):
             setattr(submit_record, key, value)
         self.session.add(submit_record)
         await self.session.commit()
+
+    async def count_by_date(self, target_date: date):
+        # 创建日期范围查询条件，查询指定日期的全部时间范围
+        start_datetime = datetime.combine(target_date, time.min)  # 当天开始时间
+        end_datetime = datetime.combine(target_date, time.max)    # 当天结束时间
+        
+        statement = (
+            select(func.count(SubmitRecord.id))
+            .where(
+                SubmitRecord.type == "submit",
+                SubmitRecord.created_at >= start_datetime,
+                SubmitRecord.created_at <= end_datetime
+            )
+        )
+        
+        result = await self.session.exec(statement)
+        return result.one()
 
     async def count_user_submissions(self):
         """
@@ -186,6 +205,62 @@ class SubmitRecordService(MySQLService):
         )
         result = await self.session.exec(statement)
         return result.all()
+
+    async def count_submissions_by_hour(self):
+        """
+        统计一天中每个小时的数据总数，条件是type="submit"
+        返回格式: [{"hour": 0, "count": 10}, {"hour": 1, "count": 15}, ...]
+        """
+        # 使用EXTRACT函数提取小时部分，然后按小时分组统计
+        statement = (
+            select(
+                func.extract("hour", SubmitRecord.created_at).label("hour"),
+                func.count(SubmitRecord.id).label("count")
+            )
+            .where(SubmitRecord.type == "submit")
+            .group_by(func.extract("hour", SubmitRecord.created_at))
+            .order_by(func.extract("hour", SubmitRecord.created_at))
+        )
+        
+        result = await self.session.exec(statement)
+        rows = result.all()
+        
+        # 创建一个包含24小时的列表，确保没有数据的小时显示为0
+        hour_counts = [{"hour": i, "count": 0} for i in range(24)]
+        
+        # 填入实际查询到的数据
+        for row in rows:
+            hour_counts[row.hour]["count"] = row.count
+            
+        return hour_counts
+
+    async def count_submissions_by_language(self):
+        """
+        统计不同编程语言的提交数量
+        返回格式: [{"language_id": 1, "count": 10}, {"language_id": 2, "count": 15}, ...]
+        """
+        statement = (
+            select(
+                SubmitRecord.language_id,
+                func.count(SubmitRecord.id).label("count")
+            )
+            .where(SubmitRecord.type == "submit")
+            .group_by(SubmitRecord.language_id)
+            .order_by(func.count(SubmitRecord.id).desc())  # 按提交数量降序排列
+        )
+        
+        result = await self.session.exec(statement)
+        rows = result.all()
+
+        # 返回语言ID和对应提交数量的列表
+        return [
+            {
+                "language_id": row.language_id,
+                "count": row.count
+            }
+            for row in rows
+        ]
+
 
 class JudgeRecordService(MySQLService):
     async def create_many(self, judge_records: list[dict]):

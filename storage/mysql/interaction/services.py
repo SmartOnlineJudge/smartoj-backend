@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import func, text
 
 from ..base import MySQLService
-from ..user.models import User
+from ..user.models import User, UserDynamic
 from .models import Comment, Solution, Message
 
 
@@ -121,6 +121,23 @@ class SolutionService(MySQLService):
         solutinos = await self.session.exec(statement)
         return solutinos.all()
 
+    async def get_top_users_by_solution_count(self, limit: int = 5):
+        statement = (
+            select(
+                User.id,
+                UserDynamic.name,
+                UserDynamic.avatar,
+                func.count(Solution.id).label('solution_count')
+            )
+            .join(User, Solution.user_id == User.id)
+            .join(UserDynamic, User.id == UserDynamic.user_id)
+            .where(Solution.is_deleted == False)
+            .group_by(Solution.user_id)
+            .order_by(func.count(Solution.id).desc())
+            .limit(limit)
+        )
+        result = await self.session.exec(statement)
+        return result.all()
 
 class CommentService(MySQLService):
     async def create(
@@ -275,6 +292,24 @@ class CommentService(MySQLService):
             .options(selectinload(Comment.user).selectinload(User.user_dynamic))
         )
         return await self.session.scalar(statement)
+
+    async def get_top_users_by_comment_count(self, limit: int = 5):
+        statement = (
+            select(
+                User.id,
+                UserDynamic.name,
+                UserDynamic.avatar,
+                func.count(Comment.id).label('comment_count')
+            )
+            .join(User, Comment.user_id == User.id)
+            .join(UserDynamic, User.id == UserDynamic.user_id)
+            .where(Comment.is_deleted == False)
+            .group_by(Comment.user_id)
+            .order_by(func.count(Comment.id).desc())
+            .limit(limit)
+        )
+        result = await self.session.exec(statement)
+        return result.all()
 
 
 class MessageService(MySQLService):

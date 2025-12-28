@@ -1,9 +1,11 @@
 import json
 
 from sqlmodel import text, select
+from sqlalchemy.orm import selectinload
 
 from ..base import MySQLService
 from .models import UserProfiles
+from ..user.models import User
 
 
 class UserProfilesService(MySQLService):
@@ -125,3 +127,13 @@ class UserProfilesService(MySQLService):
 
         self.session.add(user_profile)
         await self.session.commit()
+
+    async def get_top_users_by_score(self, limit: int = 5):
+        statement = (
+            select(UserProfiles)
+            .options(selectinload(UserProfiles.user).selectinload(User.user_dynamic))
+            .order_by(UserProfiles.total_score.desc())
+            .limit(limit)
+        )
+        result = await self.session.exec(statement)
+        return result.all()

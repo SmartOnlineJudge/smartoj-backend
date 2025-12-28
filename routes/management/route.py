@@ -1,5 +1,6 @@
 import json
 import asyncio
+from datetime import datetime, date
 
 from fastapi import APIRouter, Body, Query
 from fastapi.requests import Request
@@ -8,7 +9,7 @@ from fastapi.responses import JSONResponse
 import settings
 from ..user.models import LoginModel, UserOutModel
 from ..user.route import user_logout
-from .models import Question
+from .models import Question, UserScoreRanking
 from core.user.auth import authenticate
 from core.user.session import login, USER_PREFIX, SESSION_PREFIX
 from core.user.security import mask
@@ -16,11 +17,14 @@ from utils.responses import SmartOJResponse, ResponseCodes
 from utils.dependencies import (
     CurrentAdminDependency,
     SessionRedisDependency,
-    UserDynamicServiceDependency,
     UserServiceDependency,
     TagServiceDependency, 
     LanguageServiceDependency,
-    QuestionServiceDependency
+    QuestionServiceDependency,
+    SubmitRecordDependency,
+    UserProfilesServiceDependency,
+    CommentServiceDependency,
+    SolutionServiceDependency
 )
 
 router = APIRouter()
@@ -341,3 +345,118 @@ async def language_delete(
     """
     await service.update(language_id=language_id, document={"is_deleted": is_deleted})
     return SmartOJResponse(ResponseCodes.OK)
+
+
+@router.get("/dashboard/users", summary="获取用户总数和在线用户数")
+async def get_dashboard_users(
+    _: CurrentAdminDependency,
+    session_redis: SessionRedisDependency,
+    service: UserServiceDependency,
+):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    """
+    session_keys = await session_redis.keys(SESSION_PREFIX + "*")
+    online_users = len(session_keys)
+    _, total = await service.query_by_page(1, 1)
+    return SmartOJResponse(ResponseCodes.OK, data={"total_users": total, "online_users": online_users})
+
+
+@router.get("/dashboard/submissions", summary="获取指定日期的提交数量")
+async def get_dashboard_submissions(
+    _: CurrentAdminDependency,
+    service: SubmitRecordDependency,
+    target_date: date = Query(datetime.now().date()),
+):
+    """
+    ## 请求参数说明:
+    **target_date**: 指定日期；可选，如果没有则默认为当前日期；查询参数
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    """
+    count = await service.count_by_date(target_date)
+    return SmartOJResponse(ResponseCodes.OK, data={"submissions": count})
+
+
+@router.get("/dashboard/submission-distribution-by-hour", summary="获取每小时的提交分布")
+async def get_dashboard_submission_distribution(
+    _: CurrentAdminDependency,
+    service: SubmitRecordDependency,
+):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    """
+    data = await service.count_submissions_by_hour()
+    return SmartOJResponse(ResponseCodes.OK, data={"submission_distribution": data})
+
+
+@router.get("/dashboard/submission-distribution-by-language", summary="获取编程语言的提交分布")
+async def get_dashboard_submission_distribution(
+    _: CurrentAdminDependency,
+    service: SubmitRecordDependency,
+):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    """
+    data = await service.count_submissions_by_language()
+    return SmartOJResponse(ResponseCodes.OK, data={"submission_distribution": data})
+
+
+@router.get("/dashboard/ranking/score", summary="获取用户总分排行榜")
+async def get_dashboard_ranking_score(
+    _: CurrentAdminDependency,
+    service: UserProfilesServiceDependency,
+):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    """
+    data = await service.get_top_users_by_score()
+    results = [UserScoreRanking.model_validate(d) for d in data]
+    return SmartOJResponse(ResponseCodes.OK, data={"results": results})
+
+
+@router.get("/dashboard/ranking/comment-count", summary="获取用户评论排行榜")
+async def get_dashboard_ranking_comment_count(
+    _: CurrentAdminDependency,
+    service: CommentServiceDependency,
+):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    """
+    data = await service.get_top_users_by_comment_count()
+    results = []
+    for user_id, name, avatar, comment_count in data:
+        results.append({
+            "user_id": user_id,
+            "name": name,
+            "avatar": avatar,
+            "comment_count": comment_count
+        })
+    return SmartOJResponse(ResponseCodes.OK, data={"results": results})
+
+
+@router.get("/dashboard/ranking/solution-count", summary="获取用户题解排行榜")
+async def get_dashboard_ranking_solution_count(
+    _: CurrentAdminDependency,
+    service: SolutionServiceDependency,
+):
+    """
+    ## 响应代码说明:
+    **200**: 业务逻辑执行成功 </br>
+    """
+    service.create
+    data = await service.get_top_users_by_solution_count()
+    results = []
+    for user_id, name, avatar, comment_count in data:
+        results.append({
+            "user_id": user_id,
+            "name": name,
+            "avatar": avatar,
+            "comment_count": comment_count
+        })
+    return SmartOJResponse(ResponseCodes.OK, data={"results": results})
