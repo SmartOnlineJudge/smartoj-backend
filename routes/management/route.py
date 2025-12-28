@@ -452,11 +452,11 @@ async def get_dashboard_ranking_solution_count(
     service.create
     data = await service.get_top_users_by_solution_count()
     results = []
-    for user_id, name, avatar, comment_count in data:
+    for user_id, name, avatar, solution_count in data:
         results.append({
             "user_id": user_id,
             "name": name,
             "avatar": avatar,
-            "comment_count": comment_count
+            "solution_count": solution_count
         })
     return SmartOJResponse(ResponseCodes.OK, data={"results": results})
