@@ -604,6 +604,7 @@ async def get_ranking(
     if data:
         return SmartOJResponse(ResponseCodes.OK, data=json.loads(data))
     data = await service.count_user_submissions()
+    data = sorted(data, key=lambda x: x["submit_count"], reverse=True)
     await default_redis.set(key, json.dumps(data), ex=60 * 5)
     return SmartOJResponse(ResponseCodes.OK, data=data)
 

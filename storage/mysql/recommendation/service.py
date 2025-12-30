@@ -34,32 +34,41 @@ class UserProfilesService(MySQLService):
             WHERE user_id = :user_id AND type = 'submit'
         """
         result = await self.session.exec(text(sql_stats), params={"user_id": user_id})
-        total_submissions, ac_questions_count, total_ac_records, last_active_at = result.one()
+        total_submissions, ac_questions_count, total_ac_records, last_active_at = result.first()
 
         sql_total_score = """
-            SELECT 
-                SUM(base.score) as total_score,
-                -- 通过窗口函数，在按用户分组的结果中，取 AC 数量最多的难度
-                FIRST_VALUE(base.difficulty) OVER(
-                    PARTITION BY base.user_id 
-                    ORDER BY COUNT(*) DESC
-                ) as strong_difficulty
-            FROM (
-                -- 子查询：先去重，每个用户每道题只保留一条通过记录
-                SELECT DISTINCT 
-                    sr.user_id, 
-                    sr.question_id, 
-                    q.score, 
+            WITH unique_passed_questions AS (
+                -- 1. 先去重：每个用户通过的每一道题只留一条记录
+                SELECT 
+                    sr.user_id,
+                    sr.question_id,
+                    q.score,
                     q.difficulty
                 FROM submit_record sr
                 JOIN question q ON sr.question_id = q.id
-                WHERE sr.total_test_quantity = sr.pass_test_quantity AND sr.type = 'submit'  -- 仅统计通过的记录
-            ) AS base
-            WHERE base.user_id = :user_id
-            GROUP BY base.user_id, base.difficulty;
+                WHERE sr.user_id = :user_id
+                AND sr.total_test_quantity = sr.pass_test_quantity 
+                AND sr.type = 'submit'
+                GROUP BY sr.user_id, sr.question_id, q.score, q.difficulty -- 核心去重
+            ),
+            difficulty_stats AS (
+                -- 2. 统计各难度的题目数量，并按数量排名
+                SELECT 
+                    difficulty,
+                    SUM(score) as diff_score,
+                    COUNT(*) as cnt,
+                    ROW_NUMBER() OVER(ORDER BY COUNT(*) DESC, difficulty ASC) as rn
+                FROM unique_passed_questions
+                GROUP BY difficulty
+            )
+            -- 3. 最终汇总：计算总分 + 提取排名第一的难度
+            SELECT 
+                SUM(diff_score) as total_score,
+                MAX(CASE WHEN rn = 1 THEN difficulty END) as strong_difficulty
+            FROM difficulty_stats;
         """
         result = await self.session.exec(text(sql_total_score), params={"user_id": user_id})
-        total_score, strong_difficulty = result.one()
+        total_score, strong_difficulty = result.first()
 
         sql_tags_statistics = """
             SELECT 

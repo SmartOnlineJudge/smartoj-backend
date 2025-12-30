@@ -132,7 +132,9 @@ async def call_codesandbox_task(
                 (total_test_quantity == pass_test_quantity) and (judge_type == "submit")
             )
         )
-    await update_user_profile_task.kiq(user_id=user_id)
+    # 当判题类型为置为 submit 时才更新用户画像
+    if judge_type == "submit":
+        await update_user_profile_task.kiq(user_id=user_id)
 
 
 @broker.task("update-question")
