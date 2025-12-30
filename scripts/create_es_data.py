@@ -30,7 +30,7 @@ async def create_index():
             "difficulty": {"type": "keyword"},
             "submission_quantity": {"type": "integer"},
             "pass_quantity": {"type": "integer"},
-            "score": {"type": "integer"},
+            "is_deleted": {"type": "boolean"},
             "tags": {"type": "keyword"}
         }
     }
@@ -55,6 +55,7 @@ async def migrate_data_from_mysql():
         while questions:
             for question in questions:
                 question_id = question.id
+                is_deleted = question.is_deleted
 
                 if await client.exists(index="question", id=str(question_id)):
                     continue
@@ -64,6 +65,7 @@ async def migrate_data_from_mysql():
                 question_dict = question.model_dump(exclude=("tests", "solving_frameworks"))
                 original_tags = question_dict.pop("tags")
                 question_dict["tags"] = [tag["tag"]["name"] for tag in original_tags]
+                question_dict["is_deleted"] = is_deleted
                 
                 response = await client.index(index="question", id=str(question_id), document=question_dict)
                 print(response)

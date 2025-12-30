@@ -389,6 +389,8 @@ async def query_online_solving_question_info(
     question = await service.query_by_primary_key(question_id, online_judge=True)
     if question is None:
         return SmartOJResponse(ResponseCodes.NOT_FOUND)
+    if question.is_deleted:
+        return SmartOJResponse(ResponseCodes.NOT_FOUND)
     question.tests = question.tests[:3]
     question = QuestionOnlineJudge.model_validate(question)
     return SmartOJResponse(ResponseCodes.OK, data=question)
@@ -445,7 +447,13 @@ async def query_questions(
     query = {
         "bool": {
             "must": [],
-            "filter": []
+            "filter": [
+                {
+                    "term": {
+                        "is_deleted": False
+                    }
+                }
+            ]
         }
     }
 
