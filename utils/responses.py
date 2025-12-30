@@ -26,6 +26,12 @@ class ResponseCodes:
     TIME_MEMORY_LIMIT_ALREADY_EXISTS = (505, "每个题目的每个编程语言只能有一个内存时间限制")
     SOLVING_FRAMEWORK_ALREADY_EXISTS = (510, "每个题目的每个编程语言只能有一个解题框架")
     QUESTION_TAG_ALREADY_EXISTS = (515, "当前标签已存在")
+    # 评论响应代码
+    COMMENT_DELETE_FAILED = (600, "评论删除失败")
+    # 题解相关代码
+    SOLUTION_ALREADY_EXISTS = (700, "每个用户只能对一道题目创建一个题解")
+    SOLUTION_DELETE_FAILED = (705, "题解删除失败")
+    NOT_PASSED_ALL_TESTS = (710, "只有通过一次提交才可以编写题解")
 
 
 class SmartOJResponse(BaseModel):

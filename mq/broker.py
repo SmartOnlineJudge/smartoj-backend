@@ -14,7 +14,12 @@ from storage.mysql import (
     MemoryTimeLimitService,
     TestService,
     QuestionService,
-    TagService
+    TagService,
+    MessageService,
+    UserService,
+    SolutionService,
+    CommentService,
+    UserProfilesService
 )
 from storage.es import client as es_client
 
@@ -27,12 +32,33 @@ else:
 
 broker = AioPikaBroker(
     url=settings.RABBITMQ_CONF["url"],
-).with_result_backend(RedisAsyncResultBackend(redis_url=_redis_url))
+).with_result_backend(
+    RedisAsyncResultBackend(
+        redis_url=_redis_url,
+        health_check_interval=30,
+        socket_keepalive=True,
+        retry_on_timeout=True,
+        socket_connect_timeout=15,
+        socket_timeout=10
+    )
+)
 
 
 @broker.task("send-email")
 async def send_email_task(recipient: str, subject: str, content: str):
     await send_email(recipient, subject, content)
+
+
+@broker.task("update-user-profile")
+async def update_user_profile_task(user_id: str):
+    async with (
+        UserProfilesService() as user_profile_service,
+        UserService() as user_service
+    ):
+        user = await user_service.query_by_index("user_id", user_id)
+        if user is None:
+            return
+        await user_profile_service.create_or_update_profile(user.id)
 
 
 @broker.task("call-codesandbox")
@@ -106,6 +132,7 @@ async def call_codesandbox_task(
                 (total_test_quantity == pass_test_quantity) and (judge_type == "submit")
             )
         )
+    await update_user_profile_task.kiq(user_id=user_id)
 
 
 @broker.task("update-question")
@@ -180,3 +207,48 @@ async def update_question_tag_task(event: dict):
             }
         }
         await es_client.update_by_query(index="question", body=body)
+
+
+@broker.task("create-reply-message")
+async def create_reply_message_task(event: dict):
+    """
+    MySQL 中有 comment 表的数据发生变化
+    """
+    action = event["action"]
+    # 只处理新增评论的情况
+    if action != "insert":
+        return
+    values = event["values"]
+    #  只处理回复评论的情况
+    to_comment_id = values.get("to_comment_id")
+    if to_comment_id is None:
+        return
+    
+    sender_id = values["user_id"]
+
+    if values["type"] == "question":
+        target_service_class = QuestionService
+        type_chinese_name = "题目"
+    else:
+        target_service_class = SolutionService
+        type_chinese_name = "题解"
+
+    async with (
+        UserService() as user_service,
+        target_service_class() as target_service,
+        CommentService() as comment_service
+    ):
+        user, target, comment = await asyncio.gather(
+            user_service.query_by_index("id", sender_id),
+            target_service.query_by_primary_key(values["target_id"]),
+            comment_service.query_by_primary_key(to_comment_id)
+        )
+        sender_name = user.user_dynamic.name
+        target_title = target.title
+        recipient_id = comment.user_id
+
+    message_title = f"@{sender_name} 在{type_chinese_name}“{target_title}”中回复了你"
+    content = values["content"]
+
+    async with MessageService() as service:
+        await service.create(sender_id, recipient_id, message_title, content, "reply")

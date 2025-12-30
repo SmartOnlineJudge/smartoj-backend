@@ -15,7 +15,11 @@ from storage.mysql import (
     MemoryTimeLimitService,
     UserDynamicService,
     SubmitRecordService,
-    JudgeRecordService
+    JudgeRecordService,
+    CommentService,
+    SolutionService,
+    MessageService,
+    UserProfilesService
 )
 
 
@@ -37,3 +41,7 @@ get_solving_framework_service = service_factory(SolvingFrameworkService)
 get_memory_time_limit_service = service_factory(MemoryTimeLimitService)
 get_submit_record_service = service_factory(SubmitRecordService)
 get_judge_record_service = service_factory(JudgeRecordService)
+get_comment_service = service_factory(CommentService)
+get_solution_service = service_factory(SolutionService)
+get_message_service = service_factory(MessageService)
+get_user_profiles_service = service_factory(UserProfilesService)

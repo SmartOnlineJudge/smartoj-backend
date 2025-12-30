@@ -5,6 +5,7 @@ from utils.models import SmartOJSQLModel
 
 class UserDynamic(SmartOJSQLModel):
     name: str
+    avatar: str
 
 
 class User(SmartOJSQLModel):
@@ -55,6 +56,7 @@ class Question(SmartOJSQLModel):
     title: str
     description: str
     difficulty: str
+    score: int
     created_at: datetime
     submission_quantity: int
     pass_quantity: int
@@ -65,3 +67,9 @@ class Question(SmartOJSQLModel):
     memory_time_limits: list[MemoryTimeLimit]
     solving_frameworks: list[SolvingFramework]
     judge_templates: list[JudgeTemplate]
+
+
+class UserScoreRanking(SmartOJSQLModel):
+    id: int
+    total_score: int
+    user: User

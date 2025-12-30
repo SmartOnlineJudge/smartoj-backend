@@ -182,6 +182,16 @@ class QuestionTagService(MySQLService):
         question_tag = await self.session.exec(statement)
         return question_tag.first()
 
+    async def query_question_tag_by_tag_ids(self, tag_ids: list[int]):
+        statement = (
+            select(QuestionTag)
+            .where(QuestionTag.tag_id.in_(tag_ids))
+            .options(selectinload(QuestionTag.tag))
+            .options(selectinload(QuestionTag.question))
+        )
+        result = await self.session.exec(statement)
+        return result.all()
+
     async def create(self, question_id: int, tag_id: int):
         question_tag = QuestionTag(question_id=question_id, tag_id=tag_id)
         self.session.add(question_tag)
