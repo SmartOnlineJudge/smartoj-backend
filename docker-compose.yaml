@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # FastAPI 主应用
+  backend:
+    build: .
+    container_name: smartoj-backend
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - smartoj-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # TaskIQ Worker 进程（处理异步任务）
+  taskiq-worker:
+    build: .
+    container_name: smartoj-taskiq-worker
+    restart: unless-stopped
+    networks:
+      - smartoj-network
+    # 根据部署文档，使用 2 个 worker 进程
+    command: ["uv", "run", "taskiq", "worker", "mq.broker:broker", "--workers", "2"]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # MySQL Binlog 监听进程
+  binlog-listener:
+    build: .
+    container_name: smartoj-binlog-listener
+    restart: unless-stopped
+    networks:
+      - smartoj-network
+    # 使用模块方式运行 binlog 监听脚本
+    command: ["uv", "run", "python", "-m", "scripts.listen_mysql_binlog"]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # ElasticSearch 数据迁移服务（一次性任务）
+  es-migrate:
+    build: .
+    container_name: smartoj-es-migrate
+    networks:
+      - smartoj-network
+    # 迁移 MySQL 数据到 ElasticSearch
+    command: ["uv", "run", "python", "-m", "scripts.create_es_data"]
+    restart: "no"  # 只执行一次，不自动重启
+    # 依赖 MySQL 和 ElasticSearch 启动完成
+    # 注意：这些服务在 docker-compose.infra.yaml 中，需要先启动基础设施
+    profiles:
+      - migrate  # 使用 profile 避免默认启动，按需启动
+
+networks:
+  smartoj-network:
+    driver: bridge

@@ -15,6 +15,13 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+-- 创建后端服务数据库
+CREATE DATABASE IF NOT EXISTS smartoj
+  DEFAULT COLLATE utf8mb4_0900_ai_ci
+  DEFAULT CHARACTER SET utf8mb4;
+
+USE smartoj;
+
 --
 -- Table structure for table `comment`
 --
@@ -515,3 +522,39 @@ INSERT INTO `user_profiles` VALUES (1,4,'2025-12-25 05:49:06',305,'[]','[{\"tag_
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2025-12-29 13:14:55
+
+--
+-- AI Service Database and Tables
+--
+
+-- 创建 AI 服务数据库
+CREATE DATABASE IF NOT EXISTS smartojai
+  DEFAULT COLLATE utf8mb4_0900_ai_ci
+  DEFAULT CHARACTER SET utf8mb4;
+
+USE smartojai;
+
+-- 创建 conversations 表
+CREATE TABLE IF NOT EXISTS conversations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    user_id VARCHAR(13) NOT NULL,
+    question_id INT DEFAULT NULL,
+    thread_id VARCHAR(128) NOT NULL UNIQUE,
+    INDEX idx_user_id_is_deleted_question_id (user_id, is_deleted, question_id),
+    INDEX idx_updated_at (updated_at)
+);
+
+-- 创建 memories 表
+CREATE TABLE IF NOT EXISTS memories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(13) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    content VARCHAR(50) NOT NULL,
+    type ENUM('level', 'ability', 'preference'),
+    INDEX idx_user_id (user_id)
+);

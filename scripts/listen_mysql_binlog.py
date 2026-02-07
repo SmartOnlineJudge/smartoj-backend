@@ -8,6 +8,7 @@ import traceback
 import threading
 from datetime import datetime
 
+import aiomysql
 from taskiq import AsyncTaskiqDecoratedTask
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.row_event import (
@@ -34,12 +35,40 @@ table2task: dict[str, AsyncTaskiqDecoratedTask] = {
 
 
 async def load_binlog_position() -> tuple[str | None, int | None]:
+    """加载 binlog 位置，如果首次启动则从 MySQL 获取当前位置"""
     conn = get_default_redis()
     result = await conn.get("binlog_position")
-    if result is None:
-        return None, None
-    binlog_position = json.loads(result)
-    return binlog_position["log_file"], binlog_position["log_pos"]
+
+    # 如果 Redis 中已保存位置，直接返回
+    if result is not None:
+        binlog_position = json.loads(result)
+        return binlog_position["log_file"], binlog_position["log_pos"]
+
+    # 首次启动：从 MySQL 获取当前 binlog 位置
+    logger.info("首次启动，从 MySQL 获取当前 binlog 位置...")
+    connection_settings = {
+        'host': settings.MYSQL_CONF["HOST"],
+        'port': settings.MYSQL_CONF["PORT"],
+        'user': settings.MYSQL_CONF["USER"],
+        'password': settings.MYSQL_CONF["PASSWORD"],
+        'db': 'mysql'
+    }
+
+    try:
+        async with aiomysql.connect(**connection_settings) as mysql_conn:
+            async with mysql_conn.cursor() as cursor:
+                await cursor.execute("SHOW MASTER STATUS")
+                result = await cursor.fetchone()
+
+                if result:
+                    log_file, log_pos = result[0], result[1]
+                    logger.info(f"已保存初始 binlog 位置：{log_file} {log_pos}")
+                    return log_file, log_pos
+    except Exception as e:
+        logger.error(f"获取 MySQL binlog 位置失败：{e}")
+
+    # 如果获取失败，返回 None（将从最新位置开始监听）
+    return None, None
 
 
 async def save_binlog_position(log_file: str, log_pos: int):
